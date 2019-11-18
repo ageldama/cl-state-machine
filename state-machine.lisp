@@ -10,11 +10,34 @@
   (:nicknames :statem)
   (:use :common-lisp)
   (:export
+
+   ;; functions
    :trigger
-   :state-definition :list-of-state-definitions
-   :initial
-   :current
-   :state-machine))
+
+   ;; state-definition
+   :state-definition
+   :state
+   :event
+   :description
+   :terminal
+   :requirement
+   :before-hooks
+   :after-hooks
+   :list-of-state-definitions
+   :list-of-state-definitions?
+
+   ;; state-machine
+   :initial-state
+   :current-state
+   :before-hooks
+   :after-hooks
+   :state-machine
+
+   ;; state-transition
+   :state-transition
+   ;; TODO: struct funcs, accessors
+   ;; TODO: more functions
+   ))
 
 (defpackage #:cl-state-machine-test
   (:use :common-lisp :it.bese.FiveAM :cl-state-machine))
@@ -44,9 +67,9 @@ be passed to its' callbacks TODO:"))
   ((event
     :initarg :event
     :reader event)
-   (name
+   (state
     :initarg :state
-    :reader name)
+    :reader state)
    (description
     :initarg :description
     :initform nil
@@ -78,13 +101,13 @@ be passed to its' callbacks TODO:"))
   `(satisfies list-of-state-definitions?))
 
 (defclass state-machine ()
-  ((initial
-    :initarg :initial
+  ((initial-state
+    :initarg :initial-state
     :initform nil
-    :reader initial)
-   (current
+    :reader initial-state)
+   (current-state
     :initform nil
-    :reader current)
+    :reader current-state)
    (before-hooks
     :initarg :before-hooks
     :initform '()
@@ -93,16 +116,8 @@ be passed to its' callbacks TODO:"))
     :initarg :after-hooks
     :initform '()
     :accessor after-hooks)
-   (start-hooks
-    :initarg :start-hooks
-    :initform '()
-    :accessor start-hooks)
-   (terminated-hooks
-    :initarg :terminated-hooks
-    :initform '()
-    :accessor terminated-hooks)
-   (definitions
-    :initarg :definitions
+   (state-definitions
+    :initarg :state-definitions
     :initform '()
     :type list-of-state-definitions)))
 
@@ -147,8 +162,8 @@ value of each `state-definition'."
   (declare (ignore a-state-machine))
   nil) ;; TODO
 
-(defun state-definition-by-name (a-state-machine state-name)
-  (declare (ignore a-state-machine state-name))
+(defun state-definition-by-state (a-state-machine state)
+  (declare (ignore a-state-machine state))
   nil) ;; TODO
 
 ;; TODO: map/and?
@@ -176,42 +191,45 @@ value of each `state-definition'."
     (let ((x '(1 2 3)))
       (check-type x list-of-state-definitions))))
 
+(defun state-machine-example-01 ()
+  (make-instance 'state-machine
+                 :initial-state :in-bed
+                 :state-definitions
+                 `(,(make-instance 'state-definition
+                                   :event :go-to-work
+                                   :state :at-work
+                                   :requirement :at-home)
+                   ,(make-instance 'state-definition
+                                   :event :go-home
+                                   :state :at-home
+                                   :requirement :at-work)
+                   ,(make-instance 'state-definition
+                                   :event :go-to-sleep
+                                   :state :in-bed
+                                   :requirement :at-home)
+                   ,(make-instance 'state-definition
+                                   :event :wake-up
+                                   :state :at-home
+                                   :requirement :in-bed)
+                   ,(make-instance 'state-definition
+                                   :event :meditate
+                                   :state :nirvana
+                                   :requirement :at-home
+                                   :terminal t)
+                   ,(make-instance 'state-definition
+                                   :event :make-big-money
+                                   :state :being-rich
+                                   :requirement :at-work
+                                   :terminal t))))
 
-(make-instance 'state-definition
-               :event :go-to-work
-               :state :at-work
-               :requirement :at-home)
+(test state-machine-accesors
+  (let ((sm (state-machine-example-01)))
+    (signals undefined-function ;; no accessor
+      (locally
+          #+sbcl (declare (sb-ext:muffle-conditions cl:style-warning))
+          (state-definitions sm)))
+  ))
 
-(make-instance 'state-definition
-               :event :go-home
-               :state :at-home
-               :requirement :at-work)
-
-(make-instance 'state-definition
-               :event :go-to-sleep
-               :state :in-bed
-               :requirement :at-home)
-
-(make-instance 'state-definition
-               :event :wake-up
-               :state :at-home
-               :requirement :in-bed)
-
-(make-instance 'state-definition
-               :event :meditate
-               :state :nirvana
-               :requirement :at-home
-               :terminal t)
-
-(make-instance 'state-definition
-               :event :make-big-money
-               :state :being-rich
-               :requirement :at-work
-               :terminal t)
-
-
-
-(make-instance 'state-machine)
 
 
 ;;; EOF
