@@ -7,6 +7,7 @@
 (in-package :cl-user)
 
 (defpackage #:cl-state-machine
+  (:nicknames :statem)
   (:use :common-lisp)
   (:export
    :trigger
@@ -29,30 +30,43 @@
 Any argument can be passed as `args' to the `a-state-machine` and will
 be passed to its' callbacks TODO:"))
 
+(declaim (type structure-object state-transition))
+
 ;; TODO: type-spec
 ;; TODO: docstr
 
+(declaim (ftype (function (&rest t) boolean) always-t))
 (defun always-t (&rest args)
   (declare (ignore args))
   t)
 
-(defclass state-definition () ((event
-                                :initarg :event
-                                :reader event)
-                               (name
-                                :initarg :state
-                                :reader name)
-                               (description
-                                :initarg :description
-                                :initform nil
-                                :reader description)
-                               (requirement
-                                :initarg :requirement
-                                :reader requirement)
-                               (guard
-                                :initarg :guard
-                                :initform #'always-t
-                                :accessor guard)))
+(defclass state-definition ()
+  ((event
+    :initarg :event
+    :reader event)
+   (name
+    :initarg :state
+    :reader name)
+   (description
+    :initarg :description
+    :initform nil
+    :reader description)
+   (terminal
+    :initarg :terminal
+    :initform nil
+    :type boolean
+    :reader terminal)
+   (requirement
+    :initarg :requirement
+    :reader requirement)
+   (before-hooks
+    :initarg :before-hooks
+    :initform (list #'always-t)
+    :accessor before-hooks)
+   (after-hooks
+    :initarg :after-hooks
+    :initform '()
+    :accessor after-hooks)))
 
 (defun list-of-state-definitions? (a-list)
   (and (listp a-list) ; allow an empty list
@@ -63,30 +77,34 @@ be passed to its' callbacks TODO:"))
 (deftype list-of-state-definitions ()
   `(satisfies list-of-state-definitions?))
 
-(defclass state-machine () ((initial
-                             :initarg :initial
-                             :initform nil
-                             :reader initial)
-                            (before-hooks
-                             :initarg :before-hooks
-                             :initform '()
-                             :accessor before-hooks)
-                            (after-hooks
-                             :initarg :after-hooks
-                             :initform '()
-                             :accessor after-hooks)
-                            (start-hooks
-                             :initarg :start-hooks
-                             :initform '()
-                             :accessor start-hooks)
-                            (terminated-hooks
-                             :initarg :terminated-hooks
-                             :initform '()
-                             :accessor terminated-hooks)
-                            (definitions
-                             :initarg :definitions
-                             :initform '()
-                             :type list-of-state-definitions)))
+(defclass state-machine ()
+  ((initial
+    :initarg :initial
+    :initform nil
+    :reader initial)
+   (current
+    :initform nil
+    :reader current)
+   (before-hooks
+    :initarg :before-hooks
+    :initform '()
+    :accessor before-hooks)
+   (after-hooks
+    :initarg :after-hooks
+    :initform '()
+    :accessor after-hooks)
+   (start-hooks
+    :initarg :start-hooks
+    :initform '()
+    :accessor start-hooks)
+   (terminated-hooks
+    :initarg :terminated-hooks
+    :initform '()
+    :accessor terminated-hooks)
+   (definitions
+    :initarg :definitions
+    :initform '()
+    :type list-of-state-definitions)))
 
 
 (defstruct state-transition
@@ -104,12 +122,6 @@ value of each `state-definition'."
   (from-state-name nil :type symbol :read-only t)
   (to-state-name nil :type symbol :read-only t)
   (args nil :type t :read-only t))
-
-
-(defun current (a-state-machine)
-  (declare (ignore a-state-machine))
-  ;; TODO: type-spec
-  nil) ;; TODO
 
 (defun can? (a-state-machine event)
   (declare (ignore a-state-machine event))
@@ -143,7 +155,7 @@ value of each `state-definition'."
 ;; TODO: map/list?
 
 
-
+;; TODO: state-machine builder DSL
 
 
 
@@ -164,6 +176,42 @@ value of each `state-definition'."
     (let ((x '(1 2 3)))
       (check-type x list-of-state-definitions))))
 
+
+(make-instance 'state-definition
+               :event :go-to-work
+               :state :at-work
+               :requirement :at-home)
+
+(make-instance 'state-definition
+               :event :go-home
+               :state :at-home
+               :requirement :at-work)
+
+(make-instance 'state-definition
+               :event :go-to-sleep
+               :state :in-bed
+               :requirement :at-home)
+
+(make-instance 'state-definition
+               :event :wake-up
+               :state :at-home
+               :requirement :in-bed)
+
+(make-instance 'state-definition
+               :event :meditate
+               :state :nirvana
+               :requirement :at-home
+               :terminal t)
+
+(make-instance 'state-definition
+               :event :make-big-money
+               :state :being-rich
+               :requirement :at-work
+               :terminal t)
+
+
+
+(make-instance 'state-machine)
 
 
 ;;; EOF
