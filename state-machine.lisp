@@ -11,10 +11,13 @@
   (:use :common-lisp)
   (:export
 
-   ;; functions
+   ;; global
+   :non-nil-symbol
    :trigger
+   :start-state-machine!
+   ;; TODO: more functions
 
-   ;; state-definition
+   ;; `state-definition'
    :state-definition
    :state
    :event
@@ -26,17 +29,22 @@
    :list-of-state-definitions
    :list-of-state-definitions?
 
-   ;; state-machine
+   ;; `state-machine'
    :initial-state
    :current-state
    :before-hooks
    :after-hooks
    :state-machine
 
-   ;; state-transition
+   ;; `state-transition'
    :state-transition
-   ;; TODO: struct funcs, accessors
-   ;; TODO: more functions
+   :make-state-transition
+   :state-transition-args
+   :state-transition-event
+   :state-transition-from-state-name
+   :state-transition-to-state-name
+   :state-transition-state-machine
+   :state-transition-p
    ))
 
 (defpackage #:cl-state-machine-test
@@ -46,14 +54,26 @@
 
 (in-package :cl-state-machine)
 
+
+(declaim (type structure-object state-transition))
+
+
+(deftype non-nil-symbol ()
+  `(and symbol
+        (not null)))
+
+(deftype before-hook-function ()
+  `(ftype (function (state-transition &rest t) boolean)))
+
+(deftype after-hook-function ()
+  `(ftype (function (state-transition &rest t) null)))
+
 (defgeneric trigger (a-state-machine event &rest args)
   (:documentation
    "Trigger the `event' on given `a-state-machine' an instance of `state-machine'.
 
 Any argument can be passed as `args' to the `a-state-machine` and will
 be passed to its' callbacks TODO:"))
-
-(declaim (type structure-object state-transition))
 
 ;; TODO: type-spec
 ;; TODO: docstr
@@ -64,31 +84,43 @@ be passed to its' callbacks TODO:"))
   t)
 
 (defclass state-definition ()
+  ;; TODO: docstr
   ((event
     :initarg :event
+    :type non-nil-symbol
     :reader event)
    (state
     :initarg :state
+    :type non-nil-symbol
     :reader state)
    (description
     :initarg :description
     :initform nil
+    :type string
+    ;; TODO :documentation
     :reader description)
    (terminal
     :initarg :terminal
     :initform nil
     :type boolean
+    ;; TODO :documentation
     :reader terminal)
    (requirement
     :initarg :requirement
+    :type non-nil-symbol
+    ;; TODO :documentation
     :reader requirement)
    (before-hooks
     :initarg :before-hooks
     :initform (list #'always-t)
+    :type before-hook-function
+    ;; TODO :documentation
     :accessor before-hooks)
    (after-hooks
     :initarg :after-hooks
     :initform '()
+    :type after-hook-function
+    ;; TODO :documentation
     :accessor after-hooks)))
 
 (defun list-of-state-definitions? (a-list)
@@ -133,7 +165,7 @@ has passed to `trigger'.
 value of each `state-definition'."
 
   (event nil :type symbol :read-only t)
-  (a-state-machine nil :type state-machine :read-only t)
+  (state-machine nil :type state-machine :read-only t)
   (from-state-name nil :type symbol :read-only t)
   (to-state-name nil :type symbol :read-only t)
   (args nil :type t :read-only t))
@@ -158,7 +190,11 @@ value of each `state-definition'."
   ;; TODO: type-sepc
   nil) ;; TODO
 
-(defun restart-state-machine (a-state-machine)
+(defun state-machine-started? (a-state-machine)
+  (declare (ignore a-state-machine))
+  nil) ;; TODO:
+
+(defun start-state-machine! (a-state-machine)
   (declare (ignore a-state-machine))
   nil) ;; TODO
 
@@ -179,17 +215,27 @@ value of each `state-definition'."
 
 ;;; Do it! (fiveam:run!)
 
-(test check-type-list-of-state-definitions
-  (is (null (let ((x '()))
-              (check-type x list-of-state-definitions))))
-  (is (null (let ((x (list (make-instance 'state-definition))))
-              (check-type x list-of-state-definitions))))
+(defmacro check-type* (val type)
+  (let ((x# (gensym)))
+    `(let ((,x# ,val))
+       (check-type ,x# ,type))))
+
+(test check-type--list-of-state-definitions
+  (is (null (check-type* '() list-of-state-definitions)))
+  (is (null (check-type* (list (make-instance 'state-definition))
+                         list-of-state-definitions)))
   (signals simple-type-error
-    (let ((x "foobar"))
-      (check-type x list-of-state-definitions)))
+      (check-type* "foobar" list-of-state-definitions))
   (signals simple-type-error
-    (let ((x '(1 2 3)))
-      (check-type x list-of-state-definitions))))
+      (check-type* '(1 2 3) list-of-state-definitions)))
+
+(test check-type--non-nil-symbol
+  (is (null (check-type* :foo non-nil-symbol)))
+  (is (null (check-type* 'foo non-nil-symbol)))
+  (signals simple-type-error (check-type* 42 non-nil-symbol))
+  (signals simple-type-error (check-type* nil non-nil-symbol)))
+
+
 
 (defun state-machine-example-01 ()
   (make-instance 'state-machine
@@ -227,8 +273,7 @@ value of each `state-definition'."
     (signals undefined-function ;; no accessor
       (locally
           #+sbcl (declare (sb-ext:muffle-conditions cl:style-warning))
-          (state-definitions sm)))
-  ))
+          (state-definitions sm)))))
 
 
 
