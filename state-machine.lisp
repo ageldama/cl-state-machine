@@ -19,8 +19,6 @@
    ;; TODO: more functions
    :before-hook-function
    :after-hook-function
-   :before-hook-function-list
-   :afte-hook-function-list
 
    ;; `state-definition'
    :state-definition
@@ -60,8 +58,23 @@
 (in-package :cl-state-machine)
 
 
-(declaim (type structure-object state-transition))
+(defmacro predicate-list-of (allow-empty? type a-list)
+  `(and (locally
+            #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
+            (if ,allow-empty? (listp ,a-list)
+                (and (listp ,a-list)
+                     (not (null ,a-list)))))
+        (every #'(lambda (v) (typep v ,type))
+               ,a-list)))
 
+(defun function-list? (a-list)
+  (predicate-list-of t 'function a-list))
+
+(deftype function-list ()
+  `(satisfies function-list?))
+
+
+(declaim (type structure-object state-transition))
 
 (deftype non-nil-symbol ()
   `(and symbol
@@ -72,38 +85,6 @@
 
 (deftype after-hook-function ()
   `(function (state-transition &rest t) null))
-
-#|
-(defpackage #:cl-state-machine-test
-  (:use :common-lisp :it.bese.FiveAM :alexandria :cl-state-machine))
-
-
-
-(in-package :cl-state-machine)
-
-
-(declaim (type structure-object state-transition))
-
-
-(deftype non-nil-symbol ()
-  `(and symbol
-        (not null)))
-
-(deftype before-hook-function ()
-  `(function (state-transition &rest t) boolean))
-
-(deftype after-hook-function ()
-  `(function (state-transition &rest t) null))
-
-|#
-
- ;; FIXME: (typep '() 'statem::before-hook-function-list)
-(deftype before-hook-function-list ()
-  `(list before-hook-function))
-
-;; FIXME: (typep '() 'statem::after-hook-function-list)
-(deftype after-hook-function-list ()
-  `(list after-hook-function))
 
 (defgeneric trigger (a-state-machine event &rest args)
   (:documentation
@@ -125,49 +106,42 @@ be passed to its' callbacks TODO:"))
   ((event
     :initarg :event
     :type non-nil-symbol
+    :documentation "TODO"
     :reader event)
    (state
     :initarg :state
     :type non-nil-symbol
+    :documentation "TODO"
     :reader state)
    (description
     :initarg :description
     :initform nil
     :type string
-    ;; TODO :documentation
+    :documentation "TODO"
     :reader description)
    (terminal
     :initarg :terminal
     :initform nil
     :type boolean
-    ;; TODO :documentation
+     :documentation "TODO"
     :reader terminal)
    (requirement
     :initarg :requirement
     :type non-nil-symbol
-    ;; TODO :documentation
+    :documentation "TODO"
     :reader requirement)
    (before-hooks
     :initarg :before-hooks
     :initform (list #'always-t)
-    :type before-hook-function-list
-    ;; TODO :documentation
+    :type function-list
+    :documentation "TODO"
     :accessor before-hooks)
    (after-hooks
     :initarg :after-hooks
     :initform '()
     :type after-hook-function-list
-    ;; TODO :documentation
+    :documentation "TODO"
     :accessor after-hooks)))
-
-(defmacro predicate-list-of (allow-empty? type a-list)
-  `(and (locally
-            #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
-            (if ,allow-empty? (listp ,a-list)
-                (and (listp ,a-list)
-                     (not (null ,a-list)))))
-        (every #'(lambda (v) (typep v ,type))
-               ,a-list)))
 
 (defun state-definition-list? (a-list)
   (predicate-list-of t 'state-definition a-list))
