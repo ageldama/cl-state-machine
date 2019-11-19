@@ -1,6 +1,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (ql:quickload :fiveam)
+  (ql:quickload :fiveam) ;; test
+  (ql:quickload :alexandria) ;; test
   )
 
 
@@ -48,7 +49,7 @@
    ))
 
 (defpackage #:cl-state-machine-test
-  (:use :common-lisp :it.bese.FiveAM :cl-state-machine))
+  (:use :common-lisp :it.bese.FiveAM :alexandria :cl-state-machine))
 
 
 
@@ -269,12 +270,11 @@ value of each `state-definition'."
                                    :terminal t))))
 
 (test state-machine-accessors
-  (let ((sm (state-machine-example-01)))
-    (signals undefined-function ;; no accessor
-      (locally
-          #+sbcl (declare (sb-ext:muffle-conditions cl:style-warning))
-          (state-definitions sm)))))
-
+  ;; should not be accessible
+  (multiple-value-bind (sym kind)
+      (ensure-symbol :state-definitions :cl-state-machine)
+    (declare (ignore sym))
+    (is (eq :internal kind))))
 
 
 ;;; EOF
