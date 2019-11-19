@@ -222,25 +222,18 @@ value of each `state-definition'."
 
 ;;; Do it! (fiveam:run!)
 
-(defmacro check-type* (val type)
-  (let ((x# (gensym)))
-    `(let ((,x# ,val))
-       (check-type ,x# ,type))))
-
 (test check-type--state-definition-list
-  (is (null (check-type* '() state-definition-list)))
-  (is (null (check-type* (list (make-instance 'state-definition))
-                         state-definition-list)))
-  (signals simple-type-error
-      (check-type* "foobar" state-definition-list))
-  (signals simple-type-error
-      (check-type* '(1 2 3) state-definition-list)))
+  (is-true (typep '() 'state-definition-list))
+  (is-true (typep (list (make-instance 'state-definition))
+                         'state-definition-list))
+  (is-false (typep "foobar" 'state-definition-list))
+  (is-false (typep '(1 2 3) 'state-definition-list)))
 
 (test check-type--non-nil-symbol
-  (is (null (check-type* :foo non-nil-symbol)))
-  (is (null (check-type* 'foo non-nil-symbol)))
-  (signals simple-type-error (check-type* 42 non-nil-symbol))
-  (signals simple-type-error (check-type* nil non-nil-symbol)))
+  (is-true (typep :foo 'non-nil-symbol))
+  (is-true (typep 'foo 'non-nil-symbol))
+  (is-false (typep 42 'non-nil-symbol))
+  (is-false (typep nil 'non-nil-symbol)))
 
 
 
