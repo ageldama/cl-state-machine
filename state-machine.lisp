@@ -241,12 +241,16 @@ value of each `state-definition'."
   (declare (ignore a-state-machine))
   nil) ;; TODO
 
-(defun state-definition-by-state (a-state-machine state)
-  (declare (ignore a-state-machine state))
-  nil) ;; TODO
+(defun find-state-definition-by-state (a-state-machine state)
+  "TODO"
+  nil)
 
 ;; TODO: map/and?
 ;; TODO: map/list?
+
+
+
+;; TODO: initialize :after -- ensure no dup states/events in state-definitions
 
 
 ;; TODO: state-machine builder DSL
