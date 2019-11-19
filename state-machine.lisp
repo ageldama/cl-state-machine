@@ -1,7 +1,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam) ;; test
-  (ql:quickload :alexandria)
+  (ql:quickload :alexandria) ;; test
   ;; TODO: parachute?
   )
 
@@ -10,7 +10,7 @@
 
 (defpackage #:cl-state-machine
   (:nicknames :statem)
-  (:use :common-lisp :alexandria)
+  (:use :common-lisp)
   (:export
 
    ;; global
@@ -295,11 +295,19 @@ be passed to its' callbacks TODO:"))
 ;; TODO: state-machine builder DSL
 
 (defmacro state-definitions-of (&rest state-definition-args-list)
-  "Turn list of initargs for `(make-instance 'state-definition)` into
+  "Turn lists of initargs for `(make-instance 'state-definition)` into
 list of `state-definition' instances"
-  (with-gensyms (i#)
+  (let ((i# (gensym)))
     `(loop :for ,i# :in (list ,@state-definition-args-list)
            :collect (apply #'make-instance 'state-definition ,i#))))
+
+(defmacro state-machine-of (state-machine-args &rest state-definition-args-list)
+  (let ((state-defs# (gensym)))
+    `(let ((,state-defs# (state-definitions-of ,@state-definition-args-list)))
+       (apply #'make-instance 'state-machine
+              (append ,state-machine-args `(:state-definitions ,,state-defs#))))))
+
+
 
 
 
