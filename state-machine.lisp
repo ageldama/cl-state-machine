@@ -17,6 +17,10 @@
    :trigger
    :start-state-machine!
    ;; TODO: more functions
+   :before-hook-function
+   :after-hook-function
+   :before-hook-function-list
+   :afte-hook-function-list
 
    ;; `state-definition'
    :state-definition
@@ -68,6 +72,30 @@
 
 (deftype after-hook-function ()
   `(function (state-transition &rest t) null))
+
+#|
+(defpackage #:cl-state-machine-test
+  (:use :common-lisp :it.bese.FiveAM :alexandria :cl-state-machine))
+
+
+
+(in-package :cl-state-machine)
+
+
+(declaim (type structure-object state-transition))
+
+
+(deftype non-nil-symbol ()
+  `(and symbol
+        (not null)))
+
+(deftype before-hook-function ()
+  `(function (state-transition &rest t) boolean))
+
+(deftype after-hook-function ()
+  `(function (state-transition &rest t) null))
+
+|#
 
  ;; FIXME: (typep '() 'statem::before-hook-function-list)
 (deftype before-hook-function-list ()
