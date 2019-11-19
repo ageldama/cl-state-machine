@@ -26,8 +26,8 @@
    :requirement
    :before-hooks
    :after-hooks
-   :list-of-state-definitions
-   :list-of-state-definitions?
+   :state-definition-list
+   :state-definition-list?
 
    ;; `state-machine'
    :initial-state
@@ -63,10 +63,16 @@
         (not null)))
 
 (deftype before-hook-function ()
-  `(ftype (function (state-transition &rest t) boolean)))
+  `(function (state-transition &rest t) boolean))
 
 (deftype after-hook-function ()
-  `(ftype (function (state-transition &rest t) null)))
+  `(function (state-transition &rest t) null))
+
+(deftype before-hook-function-list ()
+  `(list before-hook-function))
+
+(deftype after-hook-function-list ()
+  `(list after-hook-function))
 
 (defgeneric trigger (a-state-machine event &rest args)
   (:documentation
@@ -78,9 +84,9 @@ be passed to its' callbacks TODO:"))
 ;; TODO: type-spec
 ;; TODO: docstr
 
-(declaim (ftype (function (&rest t) boolean) always-t))
-(defun always-t (&rest args)
-  (declare (ignore args))
+(declaim (ftype before-hook-function always-t))
+(defun always-t (a-state-transition &rest args)
+  (declare (ignore a-state-transition args))
   t)
 
 (defclass state-definition ()
@@ -113,24 +119,25 @@ be passed to its' callbacks TODO:"))
    (before-hooks
     :initarg :before-hooks
     :initform (list #'always-t)
-    :type before-hook-function
+    :type before-hook-function-list
     ;; TODO :documentation
     :accessor before-hooks)
    (after-hooks
     :initarg :after-hooks
     :initform '()
-    :type after-hook-function
+    :type after-hook-function-list
     ;; TODO :documentation
     :accessor after-hooks)))
 
-(defun list-of-state-definitions? (a-list)
+(defun state-definition-list? (a-list)
   (and (listp a-list) ; allow an empty list
        (every #'(lambda (v)
                   (subtypep (type-of v) 'state-definition))
               a-list)))
 
-(deftype list-of-state-definitions ()
-  `(satisfies list-of-state-definitions?))
+(deftype state-definition-list ()
+  `(satisfies state-definition-list?))
+
 
 (defclass state-machine ()
   ((initial-state
@@ -151,7 +158,7 @@ be passed to its' callbacks TODO:"))
    (state-definitions
     :initarg :state-definitions
     :initform '()
-    :type list-of-state-definitions)))
+    :type state-definition-list)))
 
 
 (defstruct state-transition
@@ -220,14 +227,14 @@ value of each `state-definition'."
     `(let ((,x# ,val))
        (check-type ,x# ,type))))
 
-(test check-type--list-of-state-definitions
-  (is (null (check-type* '() list-of-state-definitions)))
+(test check-type--state-definition-list
+  (is (null (check-type* '() state-definition-list)))
   (is (null (check-type* (list (make-instance 'state-definition))
-                         list-of-state-definitions)))
+                         state-definition-list)))
   (signals simple-type-error
-      (check-type* "foobar" list-of-state-definitions))
+      (check-type* "foobar" state-definition-list))
   (signals simple-type-error
-      (check-type* '(1 2 3) list-of-state-definitions)))
+      (check-type* '(1 2 3) state-definition-list)))
 
 (test check-type--non-nil-symbol
   (is (null (check-type* :foo non-nil-symbol)))
@@ -268,7 +275,7 @@ value of each `state-definition'."
                                    :requirement :at-work
                                    :terminal t))))
 
-(test state-machine-accesors
+(test state-machine-accessors
   (let ((sm (state-machine-example-01)))
     (signals undefined-function ;; no accessor
       (locally
