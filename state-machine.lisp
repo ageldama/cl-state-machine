@@ -69,9 +69,11 @@
 (deftype after-hook-function ()
   `(function (state-transition &rest t) null))
 
+ ;; FIXME: (typep '() 'statem::before-hook-function-list)
 (deftype before-hook-function-list ()
   `(list before-hook-function))
 
+;; FIXME: (typep '() 'statem::after-hook-function-list)
 (deftype after-hook-function-list ()
   `(list after-hook-function))
 
@@ -130,11 +132,17 @@ be passed to its' callbacks TODO:"))
     ;; TODO :documentation
     :accessor after-hooks)))
 
+(defmacro predicate-list-of (allow-empty? type a-list)
+  `(and (locally
+            #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
+            (if ,allow-empty? (listp ,a-list)
+                (and (listp ,a-list)
+                     (not (null ,a-list)))))
+        (every #'(lambda (v) (typep v ,type))
+               ,a-list)))
+
 (defun state-definition-list? (a-list)
-  (and (listp a-list) ; allow an empty list
-       (every #'(lambda (v)
-                  (subtypep (type-of v) 'state-definition))
-              a-list)))
+  (predicate-list-of t 'state-definition a-list))
 
 (deftype state-definition-list ()
   `(satisfies state-definition-list?))
