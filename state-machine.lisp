@@ -73,6 +73,12 @@
 (deftype function-list ()
   `(satisfies function-list?))
 
+(defun symbol-list? (a-list)
+  (predicate-list-of t 'symbol a-list))
+
+(deftype symbol-list ()
+  `(satisfies symbol-list?))
+
 
 (declaim (type structure-object state-transition))
 
@@ -86,6 +92,7 @@
 (deftype after-hook-function ()
   `(function (state-transition &rest t) null))
 
+;; TODO: make it as a function, no need to be a generic-function
 (defgeneric trigger (a-state-machine event &rest args)
   (:documentation
    "Trigger the `event' on given `a-state-machine' an instance of `state-machine'.
@@ -93,8 +100,6 @@
 Any argument can be passed as `args' to the `a-state-machine` and will
 be passed to its' callbacks TODO:"))
 
-;; TODO: type-spec
-;; TODO: docstr
 
 (declaim (ftype before-hook-function always-t))
 (defun always-t (a-state-transition &rest args)
@@ -102,45 +107,52 @@ be passed to its' callbacks TODO:"))
   t)
 
 (defclass state-definition ()
-  ;; TODO: docstr
   ((event
     :initarg :event
     :type non-nil-symbol
-    :documentation "TODO"
+    :documentation "Event name that triggers a transition to the state."
     :reader event)
    (state
     :initarg :state
     :type non-nil-symbol
-    :documentation "TODO"
+    :documentation "Name of the state."
     :reader state)
    (description
     :initarg :description
     :initform nil
     :type string
-    :documentation "TODO"
+    :documentation "Description string. (Optional)"
     :reader description)
    (terminal
     :initarg :terminal
     :initform nil
     :type boolean
-     :documentation "TODO"
+     :documentation "Mark it as terminal state."
     :reader terminal)
    (requirement
     :initarg :requirement
-    :type non-nil-symbol
-    :documentation "TODO"
+    :initform '()
+    :type symbol-list
+    :documentation "List of symbols. Only can be transitioned this
+    list includes the `state' of previous state."
     :reader requirement)
    (before-hooks
     :initarg :before-hooks
     :initform (list #'always-t)
     :type function-list
-    :documentation "TODO"
+    :documentation "List of `before-hook-function's. All will be
+    evaluated sequentially before change the state, and each should
+    return a boolean value. If there's any false evaluated function in
+    the middle of sequential evaluation, The transition will be
+    rejected. Will not evaluated subsequent hook functions when it
+    evaluated to a `nil'."
     :accessor before-hooks)
    (after-hooks
     :initarg :after-hooks
     :initform '()
-    :type after-hook-function-list
-    :documentation "TODO"
+    :type function-list
+    :documentation "List of `after-hook-function'. All will be
+    evaluated when the state has change to this state."
     :accessor after-hooks)))
 
 (defun state-definition-list? (a-list)
@@ -154,21 +166,34 @@ be passed to its' callbacks TODO:"))
   ((initial-state
     :initarg :initial-state
     :initform nil
+    :type symbol
+    :documentation "Starting point of this `state-machine'"
     :reader initial-state)
    (current-state
     :initform nil
+    :type symbol
+    :documentation "Current state of the `state-machine', can be `nil'"
     :reader current-state)
    (before-hooks
     :initarg :before-hooks
     :initform '()
+    :type function-list
+    :documentation "TODO"
     :accessor before-hooks)
    (after-hooks
     :initarg :after-hooks
     :initform '()
+    :type function-list
+    :documentation "List of `after-hook-function's. Will be evaluated
+    the state has changed."
     :accessor after-hooks)
    (state-definitions
     :initarg :state-definitions
     :initform '()
+    :documentation "List of `state-definition's. Will be evaluated
+    before the state transition. Can reject the transition if any of
+    hook function evaluated to `nil' and will stop evaluating the
+    subsequent hook functions."
     :type state-definition-list)))
 
 
@@ -233,18 +258,30 @@ value of each `state-definition'."
 
 ;;; Do it! (fiveam:run!)
 
-(test check-type--state-definition-list
+(test typep--state-definition-list
   (is-true (typep '() 'state-definition-list))
   (is-true (typep (list (make-instance 'state-definition))
                          'state-definition-list))
   (is-false (typep "foobar" 'state-definition-list))
   (is-false (typep '(1 2 3) 'state-definition-list)))
 
-(test check-type--non-nil-symbol
+(test typep--non-nil-symbol
   (is-true (typep :foo 'non-nil-symbol))
   (is-true (typep 'foo 'non-nil-symbol))
   (is-false (typep 42 'non-nil-symbol))
   (is-false (typep nil 'non-nil-symbol)))
+
+(test typep--function-list
+  (is-true (typep '() 'cl-state-machine::function-list))
+  (is-true (typep (list #'identity) 'cl-state-machine::function-list))
+  (is-false (typep (list 123) 'cl-state-machine::function-list))
+  (is-false (typep "foobar" 'cl-state-machine::function-list)))
+
+(test typep--symbol-list
+  (is-true (typep '() 'cl-state-machine::symbol-list))
+  (is-true (typep (list 'foo) 'cl-state-machine::symbol-list))
+  (is-false (typep (list 123) 'cl-state-machine::symbol-list))
+  (is-false (typep "foobar" 'cl-state-machine::symbol-list)))
 
 
 
