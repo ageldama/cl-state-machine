@@ -14,9 +14,6 @@
 
    ;; global
    :non-nil-symbol
-   :trigger
-   :start-state-machine!
-   ;; TODO: more functions
    :before-hook-function
    :after-hook-function
 
@@ -33,11 +30,18 @@
    :state-definition-list?
 
    ;; `state-machine'
-   :initial-state
    :current-state
    :before-hooks
    :after-hooks
    :state-machine
+
+   :all-states-and-events
+   :find-state-definition-by-state
+   :find-state-definition-by-event
+   :can?
+   :possible-events
+   :terminated?
+   :trigger
 
    ;; `state-transition'
    :state-transition
@@ -92,13 +96,8 @@
 (deftype after-hook-function ()
   `(function (state-transition &rest t) null))
 
-;; TODO: make it as a function, no need to be a generic-function
-(defgeneric trigger (a-state-machine event &rest args)
-  (:documentation
-   "Trigger the `event' on given `a-state-machine' an instance of `state-machine'.
-
-Any argument can be passed as `args' to the `a-state-machine` and will
-be passed to its' callbacks TODO:"))
+(defmacro adjoinf (place item)
+  `(setf ,place (adjoin ,item ,place)))
 
 
 (declaim (ftype before-hook-function always-t))
@@ -109,8 +108,8 @@ be passed to its' callbacks TODO:"))
 (defclass state-definition ()
   ((event
     :initarg :event
-    :type non-nil-symbol
-    :documentation "Event name that triggers a transition to the state."
+    :type symbol
+    :documentation "Event name that triggers a transition to the state. (Optional)"
     :reader event)
    (state
     :initarg :state
@@ -127,14 +126,15 @@ be passed to its' callbacks TODO:"))
     :initarg :terminal
     :initform nil
     :type boolean
-     :documentation "Mark it as terminal state."
+    :documentation "Mark it as terminal state."
     :reader terminal)
    (requirement
     :initarg :requirement
     :initform '()
     :type symbol-list
     :documentation "List of symbols. Only can be transitioned this
-    list includes the `state' of previous state."
+    list includes the `state' of previous state. Can be an empty list
+    and it is by default."
     :reader requirement)
    (before-hooks
     :initarg :before-hooks
@@ -163,16 +163,11 @@ be passed to its' callbacks TODO:"))
 
 
 (defclass state-machine ()
-  ((initial-state
-    :initarg :initial-state
+  ((current-state
+    :initarg :current-state
     :initform nil
     :type symbol
-    :documentation "Starting point of this `state-machine'"
-    :reader initial-state)
-   (current-state
-    :initform nil
-    :type symbol
-    :documentation "Current state of the `state-machine', can be `nil'"
+    :documentation "Current state of the `state-machine', can be `nil'."
     :reader current-state)
    (before-hooks
     :initarg :before-hooks
@@ -213,37 +208,81 @@ value of each `state-definition'."
   (to-state-name nil :type symbol :read-only t)
   (args nil :type t :read-only t))
 
+(defun all-states-and-events (a-state-machine)
+  "Return every state and event symbol of `a-state-machine'
+as `(values list-of-states list-of-events)'"
+  (declare (type state-machine a-state-machine))
+  (let ((states '())
+        (events '()))
+    (with-slots (state-definitions) a-state-machine
+      (loop for a-state-def in state-definitions
+            do (progn (adjoinf states (state a-state-def))
+                      (adjoinf events (event a-state-def)))))
+    (values states events)))
+
+(defun find-state-definition-by-state (a-state-machine state)
+  "Find a matching `state-definition' by given `state'-symbol. `nil'
+if it cannot be found."
+  (declare (type state-machine a-state-machine)
+           (type symbol state))
+  (with-slots (state-definitions) a-state-machine
+    (loop for state-def in state-definitions
+          if (eq (state state-def) state)
+            do (return-from find-state-definition-by-state state-def))
+    ;; No result
+    nil))
+
+(defun find-state-definition-by-event (a-state-machine event)
+  "Find a matching `state-definition' by given `event'-symbol. `nil'
+if it cannot be found."
+  (declare (type state-machine a-state-machine)
+           (type symbol event))
+  (with-slots (state-definitions) a-state-machine
+    (loop for state-def in state-definitions
+          if (eq (event state-def) event)
+            do (return-from find-state-definition-by-event state-def))
+    ;; No result
+    nil))
+
+
 (defun can? (a-state-machine event)
   (declare (ignore a-state-machine event))
   ;; TODO: type-spec
   nil) ;; TODO
 
-(defun avail-states (a-state-machine)
-  (declare (ignore a-state-machine))
-  ;; TODO: type-spec
-  nil) ;; TODO
+(defun terminated? (a-state-machine)
+  (declare (type state-machine a-state-machine))
+  (let* ((cur (current-state a-state-machine))
+         (cur-state-def (find-state-definition-by-state a-state-machine cur)))
+    (assert (not (null cur)))
+    (assert (not (null cur-state-def)))
+    (terminal cur-state-def)))
 
-(defun avail-events (a-state-machine)
-  (declare (ignore a-state-machine))
-  ;; TODO: type-spec
-  nil) ;; TODO
-
+;; TODO: test
 (defun possible-events (a-state-machine)
-  (declare (ignore a-state-machine))
-  ;; TODO: type-sepc
-  nil) ;; TODO
+  "Find all possible `event'-symbols with current state of
+`a-state-machine'. Return a list of symbols and it can be empty if
+there's no other possible event or the state machine has terminated."
+  (declare (type state-machine a-state-machine))
+  (when (terminated? a-state-machine)
+    (return-from possible-events '()))
+  (let ((events '())
+        (cur (current-state a-state-machine)))
+    (with-slots (state-definitions) a-state-machine
+      (loop for state-def in state-definitions
+            if (member cur (requirement state-def))
+              do (adjoinf events (event state-def))))
+    events))
 
-(defun state-machine-started? (a-state-machine)
-  (declare (ignore a-state-machine))
-  nil) ;; TODO:
 
-(defun start-state-machine! (a-state-machine)
-  (declare (ignore a-state-machine))
-  nil) ;; TODO
+;; TODO: make it as a function, no need to be a generic-function
+(defgeneric trigger (a-state-machine event &rest args)
+  (:documentation
+   "Trigger the `event' on given `a-state-machine' an instance of `state-machine'.
 
-(defun find-state-definition-by-state (a-state-machine state)
-  "TODO"
-  nil)
+Any argument can be passed as `args' to the `a-state-machine` and will
+be passed to its' callbacks TODO:"))
+
 
 ;; TODO: map/and?
 ;; TODO: map/list?
@@ -287,38 +326,99 @@ value of each `state-definition'."
   (is-false (typep (list 123) 'cl-state-machine::symbol-list))
   (is-false (typep "foobar" 'cl-state-machine::symbol-list)))
 
+(test adjoinf
+  (let ((s '()))
+    (cl-state-machine::adjoinf s :a)
+    (cl-state-machine::adjoinf s :a)
+    (is-false (zerop (length s)))
+    (is (= 1 (length s)))
+    (cl-state-machine::adjoinf s :a)
+    (cl-state-machine::adjoinf s :b)
+    (is (= 2 (length s)))
+    (is-true (and (member :a s)
+                  (member :b s)))))
 
 
 (defun state-machine-example-01 ()
   (make-instance 'state-machine
-                 :initial-state :in-bed
+                 :current-state :at-home
                  :state-definitions
                  `(,(make-instance 'state-definition
                                    :event :go-to-work
                                    :state :at-work
-                                   :requirement :at-home)
+                                   :requirement '(:at-home))
                    ,(make-instance 'state-definition
                                    :event :go-home
                                    :state :at-home
-                                   :requirement :at-work)
+                                   :requirement '(:at-work))
                    ,(make-instance 'state-definition
                                    :event :go-to-sleep
                                    :state :in-bed
-                                   :requirement :at-home)
+                                   :requirement '(:at-home))
                    ,(make-instance 'state-definition
                                    :event :wake-up
                                    :state :at-home
-                                   :requirement :in-bed)
+                                   :requirement '(:in-bed))
                    ,(make-instance 'state-definition
                                    :event :meditate
                                    :state :nirvana
-                                   :requirement :at-home
+                                   :requirement '(:at-home)
                                    :terminal t)
                    ,(make-instance 'state-definition
                                    :event :make-big-money
                                    :state :being-rich
-                                   :requirement :at-work
+                                   :requirement '(:at-work)
                                    :terminal t))))
+
+(defun state-machine-example--started ()
+  (make-instance 'state-machine
+                 :current-state :a
+                 :state-definitions
+                 `(,(make-instance 'state-definition :state :a)
+                   ,(make-instance 'state-definition
+                     :state :b :event :go-b
+                     :requirement '(:a)
+                     :terminal t))))
+
+(defun state-machine-example--terminated ()
+  (make-instance 'state-machine
+                 :current-state :b
+                 :state-definitions
+                 `(,(make-instance 'state-definition :state :a)
+                   ,(make-instance 'state-definition
+                     :state :b :event :go-b
+                     :requirement '(:a)
+                     :terminal t))))
+
+(test all-states-and-events
+  (multiple-value-bind (states events)
+      (cl-state-machine:all-states-and-events (state-machine-example-01))
+    (loop for state in '(:at-work :at-home :in-bed :nirvana :being-rich)
+          do (is-true (member state states)))
+    (loop for event in '(:go-to-work :go-home :go-to-sleep :wake-up :meditate :make-big-money)
+          do (is-true (member event events)))))
+
+(test find-state-definition-by-state
+  (let ((a-state-machine (state-machine-example-01)))
+    (is-false (null (find-state-definition-by-state a-state-machine :nirvana)))
+    (is-true (null (find-state-definition-by-state a-state-machine :at-rome)))))
+
+(test find-state-definition-by-event
+  (let ((a-state-machine (state-machine-example-01)))
+    (is-false (null (find-state-definition-by-event a-state-machine :meditate)))
+    (is-true (null (find-state-definition-by-event a-state-machine :go-to-rome)))))
+
+(test terminated?
+  (is-false (terminated? (state-machine-example--started)))
+  (is-true (terminated? (state-machine-example--terminated))))
+
+(defun equal-set (a b)
+  (and (zerop (length (set-difference a b)))
+       (zerop (length (set-difference b a)))))
+
+(test possible-events
+  (is-true (equal-set '(:go-to-work :go-to-sleep :meditate)
+                      (possible-events (state-machine-example-01)))))
 
 (test state-machine-accessors
   ;; should not be accessible
