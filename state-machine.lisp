@@ -244,12 +244,6 @@ if it cannot be found."
     ;; No result
     nil))
 
-
-(defun can? (a-state-machine event)
-  (declare (ignore a-state-machine event))
-  ;; TODO: type-spec
-  nil) ;; TODO
-
 (defun terminated? (a-state-machine)
   (declare (type state-machine a-state-machine))
   (let* ((cur (current-state a-state-machine))
@@ -258,7 +252,6 @@ if it cannot be found."
     (assert (not (null cur-state-def)))
     (terminal cur-state-def)))
 
-;; TODO: test
 (defun possible-events (a-state-machine)
   "Find all possible `event'-symbols with current state of
 `a-state-machine'. Return a list of symbols and it can be empty if
@@ -274,6 +267,11 @@ there's no other possible event or the state machine has terminated."
               do (adjoinf events (event state-def))))
     events))
 
+(defun can? (a-state-machine event)
+  (declare (type state-machine a-state-machine)
+           (type symbol event))
+  (member event (possible-events a-state-machine)))
+
 
 ;; TODO: make it as a function, no need to be a generic-function
 (defgeneric trigger (a-state-machine event &rest args)
@@ -284,13 +282,11 @@ Any argument can be passed as `args' to the `a-state-machine` and will
 be passed to its' callbacks TODO:"))
 
 
-;; TODO: map/and?
-;; TODO: map/list?
+;; TODO: call-before-hooks
 
-
+;; TODO: call-after-hooks
 
 ;; TODO: initialize :after -- ensure no dup states/events in state-definitions
-
 
 ;; TODO: state-machine builder DSL
 
@@ -376,7 +372,7 @@ be passed to its' callbacks TODO:"))
                  :state-definitions
                  `(,(make-instance 'state-definition :state :a)
                    ,(make-instance 'state-definition
-                     :state :b :event :go-b
+                     :state :b :event :go-to-b
                      :requirement '(:a)
                      :terminal t))))
 
@@ -386,7 +382,7 @@ be passed to its' callbacks TODO:"))
                  :state-definitions
                  `(,(make-instance 'state-definition :state :a)
                    ,(make-instance 'state-definition
-                     :state :b :event :go-b
+                     :state :b :event :go-to-b
                      :requirement '(:a)
                      :terminal t))))
 
@@ -418,7 +414,17 @@ be passed to its' callbacks TODO:"))
 
 (test possible-events
   (is-true (equal-set '(:go-to-work :go-to-sleep :meditate)
-                      (possible-events (state-machine-example-01)))))
+                      (possible-events (state-machine-example-01))))
+  (is-true (equal-set '(:go-to-b) (possible-events (state-machine-example--started))))
+  (is-true (equal-set '() (possible-events (state-machine-example--terminated)))))
+
+(test can?
+  (let ((sm (state-machine-example-01)))
+    (is-true (can? sm :meditate))
+    (is-true (can? sm :go-to-sleep))
+    (is-true (can? sm :go-to-work))
+    (is-false (can? sm :go-home))))
+
 
 (test state-machine-accessors
   ;; should not be accessible
@@ -427,5 +433,7 @@ be passed to its' callbacks TODO:"))
     (declare (ignore sym))
     (is (eq :internal kind))))
 
+
+;; TODO: cl-state-machine-graphviz
 
 ;;; EOF
