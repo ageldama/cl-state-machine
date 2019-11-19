@@ -1,7 +1,8 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload :fiveam) ;; test
-  (ql:quickload :alexandria) ;; test
+  (ql:quickload :alexandria)
+  ;; TODO: parachute?
   )
 
 
@@ -9,7 +10,7 @@
 
 (defpackage #:cl-state-machine
   (:nicknames :statem)
-  (:use :common-lisp)
+  (:use :common-lisp :alexandria)
   (:export
 
    ;; global
@@ -140,19 +141,19 @@
     :initarg :before-hooks
     :initform (list #'always-t)
     :type function-list
-    :documentation "List of `before-hook-function's. All will be
-    evaluated sequentially before change the state, and each should
-    return a boolean value. If there's any false evaluated function in
-    the middle of sequential evaluation, The transition will be
-    rejected. Will not evaluated subsequent hook functions when it
-    evaluated to a `nil'."
+    :documentation "List of `before-hook-function's. Will be evaluated
+    sequentially before trainsition of the state of `state-machine' to
+    this `state-definition', and each hook function should return a
+    boolean value. When a hook function evaluated as false, reject the
+    state transition and stop the evaluation of rest hook functions."
     :accessor before-hooks)
    (after-hooks
     :initarg :after-hooks
     :initform '()
     :type function-list
-    :documentation "List of `after-hook-function'. All will be
-    evaluated when the state has change to this state."
+    :documentation "List of `after-hook-function'. Will be evaluated
+    when the state of `state-machine' has change to this
+    `state-definition'."
     :accessor after-hooks)))
 
 (defun state-definition-list? (a-list)
@@ -173,14 +174,17 @@
     :initarg :before-hooks
     :initform '()
     :type function-list
-    :documentation "TODO"
+    :documentation "List of `before-hook-function's. Will be evaluated
+    on every state transition of this `state-machine'
+    sequentially. When a hook function evaluated as false, reject the
+    state transition and stop the evaluation of rest hook functions."
     :accessor before-hooks)
    (after-hooks
     :initarg :after-hooks
     :initform '()
     :type function-list
     :documentation "List of `after-hook-function's. Will be evaluated
-    the state has changed."
+    on every state transition of this `state-machine'."
     :accessor after-hooks)
    (state-definitions
     :initarg :state-definitions
@@ -290,6 +294,12 @@ be passed to its' callbacks TODO:"))
 
 ;; TODO: state-machine builder DSL
 
+(defmacro state-definitions-of (&rest state-definition-args-list)
+  "Turn list of initargs for `(make-instance 'state-definition)` into
+list of `state-definition' instances"
+  (with-gensyms (i#)
+    `(loop :for ,i# :in (list ,@state-definition-args-list)
+           :collect (apply #'make-instance 'state-definition ,i#))))
 
 
 
@@ -300,7 +310,7 @@ be passed to its' callbacks TODO:"))
 (test typep--state-definition-list
   (is-true (typep '() 'state-definition-list))
   (is-true (typep (list (make-instance 'state-definition))
-                         'state-definition-list))
+                  'state-definition-list))
   (is-false (typep "foobar" 'state-definition-list))
   (is-false (typep '(1 2 3) 'state-definition-list)))
 
@@ -372,9 +382,9 @@ be passed to its' callbacks TODO:"))
                  :state-definitions
                  `(,(make-instance 'state-definition :state :a)
                    ,(make-instance 'state-definition
-                     :state :b :event :go-to-b
-                     :requirement '(:a)
-                     :terminal t))))
+                                   :state :b :event :go-to-b
+                                   :requirement '(:a)
+                                   :terminal t))))
 
 (defun state-machine-example--terminated ()
   (make-instance 'state-machine
@@ -382,9 +392,9 @@ be passed to its' callbacks TODO:"))
                  :state-definitions
                  `(,(make-instance 'state-definition :state :a)
                    ,(make-instance 'state-definition
-                     :state :b :event :go-to-b
-                     :requirement '(:a)
-                     :terminal t))))
+                                   :state :b :event :go-to-b
+                                   :requirement '(:a)
+                                   :terminal t))))
 
 (test all-states-and-events
   (multiple-value-bind (states events)
@@ -433,6 +443,16 @@ be passed to its' callbacks TODO:"))
     (declare (ignore sym))
     (is (eq :internal kind))))
 
+(test state-definitions-of
+  (let* ((state-defs (cl-state-machine::state-definitions-of
+                      '(:state :a :event :go-to-a)
+                      '(:state :b :event :go-to-b)))
+         (sd-1 (first state-defs))
+         (sd-2 (second state-defs)))
+    (is (eq :a (state sd-1)))
+    (is (eq :go-to-a (event sd-1)))
+    (is (eq :b (state sd-2)))
+    (is (eq :go-to-b (event sd-2)))))
 
 ;; TODO: cl-state-machine-graphviz
 
