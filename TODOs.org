@@ -1,0 +1,7 @@
+* TODO initial release [0/5]
+** TODO test / ~trigger!~
+** TODO ~asdf~-ize, reorg files/packages
+** TODO graphviz integration
+** TODO examples/text-adventure
+** TODO README / example / API-docs / License / Contact / Support
+
