@@ -155,6 +155,15 @@ When a hook function evaluated as false value, will reject the state
 Will be evaluated when the state of `state-machine' has change to this
     `state-definition'.")))
 
+(defmethod print-object ((obj state-definition) out)
+  (print-unreadable-object (obj out :type t)
+    (format out "state=~a terminal=~a description=~a before-hooks=~a after-hooks=~a"
+            (state obj)
+            (terminal obj)
+            (description obj)
+            (before-hooks obj)
+            (after-hooks obj))))
+
 (defun state-definition-list? (a-list)
   (predicate-list-of t 'state-definition a-list))
 
@@ -173,6 +182,14 @@ Will be evaluated when the state of `state-machine' has change to this
           state. (Optional)" ))
   (:documentation "Represent a transition between one state to another
   state."))
+
+(defmethod print-object ((obj transition-definition) out)
+  (print-unreadable-object (obj out :type t)
+    (format out "event=~a from-state=~a to-state=~a description=~a"
+            (event obj)
+            (from-state obj)
+            (to-state obj)
+            (description obj))))
 
 (defun transition-definition-list? (a-list)
   (predicate-list-of t 'transition-definition a-list))
@@ -210,6 +227,16 @@ Will be evaluated on every state transition of this `state-machine'.")
    (%state-definition-by-state :initform (make-hash-table))
    (%possible-events-by-state :initform (make-hash-table))
    (%transition-definitions-by-state-event-tuple :initform (make-hash-table :test #'equal))))
+
+(defmethod print-object ((obj state-machine) out)
+  (with-slots (state-definitions transition-definitions) obj
+    (print-unreadable-object (obj out :type t)
+      (format out "current-state=~a before-hooks=~a after-hooks=~a state-definitions=~a transition-definitions=~a"
+              (current-state obj)
+              (before-hooks obj)
+              (after-hooks obj)
+              state-definitions
+              transition-definitions))))
 
 
 (defstruct state-transition
@@ -450,9 +477,6 @@ list of `state-definition' instances"
                       `(:state-definitions ,,state-defs#)
                       `(:transition-definitions ,,transition-defs#))))))
 
-;; TODO print-object state-machine
-;; TODO print-object transition-definition
-;; TODO print-object state-definition
 
 
 
