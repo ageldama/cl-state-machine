@@ -53,6 +53,7 @@
    :state-machine--transition-definitions
 
    :find-state-definition-by-state
+   :find-transition-definition-by-state-and-event
    :can?
    :possible-events
    :terminated?
@@ -194,7 +195,8 @@
     :type transition-definition-list :reader state-machine--transition-definitions
     :documentation "List of `transition-definition's.")
    (%state-definition-by-state :initform (make-hash-table))
-   (%possible-events-by-state :initform (make-hash-table))))
+   (%possible-events-by-state :initform (make-hash-table))
+   (%transition-definitions-by-state-event-tuple :initform (make-hash-table :test #'equal))))
 
 
 (defstruct state-transition
@@ -248,13 +250,21 @@ there's no other possible event or the state machine has terminated."
            (type symbol event))
   (member event (possible-events a-state-machine)))
 
-;; TODO: make it as a function, no need to be a generic-function
-(defgeneric trigger! (a-state-machine event &rest args)
-  (:documentation
+(defun find-transition-definition-by-state-and-event (a-state-machine state event)
+  (with-slots (%transition-definitions-by-state-event-tuple) a-state-machine
+    (let ((state-event (cons state event)))
+      (gethash state-event %transition-definitions-by-state-event-tuple))))
+
+(defun trigger! (a-state-machine event &rest args)
    "Trigger the `event' on given `a-state-machine' an instance of `state-machine'.
 
 Any argument can be passed as `args' to the `a-state-machine` and will
-be passed to its' callbacks TODO:"))
+be passed to its' callbacks TODO:"
+  (declare (ignore event args) (type state-machine a-state-machine)
+           (type symbol event))
+  (when (terminated? a-state-machine)
+    (return-from trigger! nil))
+  nil)
 
 ;; TODO: call-before-hooks
 
@@ -281,7 +291,8 @@ functions and any constraints check."
   (declare (ignore args))
   (with-slots (state-definitions transition-definitions
                %state-definition-by-state
-               %possible-events-by-state) a-state-machine
+               %possible-events-by-state
+               %transition-definitions-by-state-event-tuple) a-state-machine
     (loop :for state-def :in state-definitions
           :for state-name := (state state-def)
           :do (setf (gethash state-name %state-definition-by-state) state-def))
@@ -289,12 +300,26 @@ functions and any constraints check."
           (state-def-count (length state-definitions)))
       (when (/= collected-count state-def-count)
         ;; ensure no dups in states
-        (error (format nil "Collected `state'-count (~a) does not match with length of `state-definitions' (~a)"
+        (error (format nil
+                       "Collected `state'-count (~a) does not match with length of `state-definitions' (~a)"
                        collected-count state-def-count))))
     (loop :for transition-def :in transition-definitions
           :for event-name := (event transition-def)
           :for state-name := (from-state transition-def)
-          :do (gethash-list-append-item state-name %possible-events-by-state event-name))))
+          :for state-event-tuple := (cons state-name event-name)
+          :do (progn
+                ;; possible-events-by-state
+                (gethash-list-append-item
+                 state-name %possible-events-by-state event-name)
+                ;; transition-definitions by state-event tuple
+                (if (gethash state-event-tuple
+                             %transition-definitions-by-state-event-tuple)
+                         (error (format nil "Duplicated state-event combination (~a)"
+                                        state-event-tuple))
+                         ;; else, OK
+                         (setf (gethash state-event-tuple
+                                        %transition-definitions-by-state-event-tuple)
+                               transition-def))))))
 
 (defmacro state-definitions-of (&rest state-definition-args-list)
   "Turn lists of initargs for `(make-instance 'state-definition)` into
@@ -464,6 +489,22 @@ list of `state-definition' instances"
   (is-false (terminated? (state-machine-example--started)))
   (is-true (terminated? (state-machine-example--terminated)))
   (signals simple-error (terminated? (state-machine-example--wrong-current))))
+
+(test find-transition-definition-by-state-and-event
+  (let ((sm (state-machine-example-01)))
+    (let ((td (find-transition-definition-by-state-and-event sm :at-home :home->work)))
+      (is-true (not (null td)))
+      (is (and (eq (event td) :home->work)
+               (eq (from-state td) :at-home)
+               (eq (to-state td) :at-work))))
+    (let ((td (find-transition-definition-by-state-and-event sm :at-work :show-me-the-money)))
+      (is-true (not (null td)))
+      (is (and (eq (event td) :show-me-the-money)
+               (eq (from-state td) :at-work)
+               (eq (to-state td) :being-rich))))
+    ;; let's not do this
+    (let ((td (find-transition-definition-by-state-and-event sm :at-kino :fick)))
+      (is-true  (null td)))))
 
 (defun equal-set (a b)
   (and (zerop (length (set-difference a b)))
