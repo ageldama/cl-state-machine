@@ -19,17 +19,30 @@
 
    ;; `state-definition'
    :state-definition
+
    :state
-   :event
    :description
    :terminal
-   :requirement
    :before-hooks
    :after-hooks
+
    :state-definition-list
    :state-definition-list?
 
    :state-definitions-of
+
+   ;; `transition-definition'
+   :transition-definition
+
+   :from-state
+   :to-state
+   :event
+   :description
+
+   :transition-definition-list
+   :transition-definition-list?
+
+   :transition-definitions-of
 
    ;; `state-machine'
    :current-state
@@ -37,6 +50,7 @@
    :after-hooks
    :state-machine
    :state-machine--state-definitions
+   :state-machine--transition-definitions
 
    :find-state-definition-by-state
    :can?
@@ -50,12 +64,11 @@
    ;; `state-transition'
    :state-transition
    :make-state-transition
-   :state-transition-args
-   :state-transition-event
-   :state-transition-from-state-name
-   :state-transition-to-state-name
-   :state-transition-state-machine
    :state-transition-p
+
+   :state-transition-args
+   :state-transition-transition-definition
+   :state-transition-state-machine
    ))
 
 (defpackage #:cl-state-machine-test
@@ -110,11 +123,7 @@
   t)
 
 (defclass state-definition ()
-  ((event
-    :initarg :event :type symbol :reader event
-    :documentation "Event name that triggers a transition to the
-    state. (Optional)")
-   (state
+  ((state
     :initarg :state :type non-nil-symbol :reader state
     :documentation "Name of the state.")
    (description
@@ -123,11 +132,6 @@
    (terminal
     :initarg :terminal :initform nil :type boolean :reader terminal
     :documentation "Mark it as terminal state.")
-   (requirement
-    :initarg :requirement :initform '() :type symbol-list :reader requirement
-    :documentation "List of symbols. Only can be transitioned this
-    list includes the `state' of previous state. Can be an empty list
-    and it is by default.")
    (before-hooks
     :initarg :before-hooks :initform (list #'always-t) :type function-list :accessor before-hooks
     :documentation "List of `before-hook-function's. Will be evaluated
@@ -148,9 +152,28 @@
   `(satisfies state-definition-list?))
 
 
+(defclass transition-definition ()
+  ((from-state :initarg :from :reader from-state :type symbol)
+   (to-state :initarg :to :reader to-state :type symbol)
+   (description
+    :initarg :description :initform nil :type string :reader description
+    :documentation "Description string. (Optional)")
+   (event :initarg :event :reader event :type symbol
+          :documentation "Event name that triggers a transition to the
+          state. (Optional)" ))
+  (:documentation "Represent a transition between one state to another
+  state."))
+
+(defun transition-definition-list? (a-list)
+  (predicate-list-of t 'transition-definition a-list))
+
+(deftype transition-definition-list ()
+  `(satisfies transition-definition-list?))
+
+
 (defclass state-machine ()
   ((current-state
-    :initarg :current-state :initform nil :type state-definition :reader current-state
+    :initarg :current-state :initform nil :type symbol :reader current-state
     :documentation "Current state of the `state-machine', can be `nil'.")
    (before-hooks
     :initarg :before-hooks :initform '() :type function-list :accessor before-hooks
@@ -165,10 +188,11 @@
    (state-definitions
     :initarg :state-definitions :initform '()
     :type state-definition-list :reader state-machine--state-definitions
-    :documentation "List of `state-definition's. Will be evaluated
-    before the state transition. Can reject the transition if any of
-    hook function evaluated to `nil' and will stop evaluating the
-    subsequent hook functions.")
+    :documentation "List of `state-definition's.")
+   (transition-definitions
+    :initarg :transition-definitions :initform '()
+    :type transition-definition-list :reader state-machine--transition-definitions
+    :documentation "List of `transition-definition's.")
    (%state-definition-by-state :initform (make-hash-table))))
 
 
@@ -181,10 +205,8 @@ has passed to `trigger'.
 
 `from-state-name' and `to-state-name' are the same as `event' slot's
 value of each `state-definition'."
-  (event nil :type symbol :read-only t)
   (state-machine nil :type state-machine :read-only t)
-  (from-state-name nil :type state-definition :read-only t)
-  (to-state-name nil :type state-definition :read-only t)
+  (transition-definition nil :type transition-definition :read-only t)
   (args nil :type t :read-only t))
 
 (defun find-state-definition-by-state (a-state-machine state)
@@ -208,6 +230,7 @@ if it cannot be found."
     (terminal cur-state-def)))
 
 ;; TODO faster
+#|
 (defun possible-events (a-state-machine)
   "Find all possible `event'-symbols with current state of
 `a-state-machine'. Return a list of symbols and it can be empty if
@@ -227,7 +250,7 @@ there's no other possible event or the state machine has terminated."
   (declare (type state-machine a-state-machine)
            (type symbol event))
   (member event (possible-events a-state-machine)))
-
+|#
 
 ;; TODO: make it as a function, no need to be a generic-function
 (defgeneric trigger! (a-state-machine event &rest args)
@@ -268,13 +291,22 @@ list of `state-definition' instances"
     `(loop :for ,i# :in (list ,@state-definition-args-list)
            :collect (apply #'make-instance 'state-definition ,i#))))
 
-(defmacro state-machine-of (state-machine-args &rest state-definition-args-list)
-  (let ((state-defs# (gensym)))
-    `(let ((,state-defs# (state-definitions-of ,@state-definition-args-list)))
+(defmacro transition-definitions-of (&rest transition-definition-args-list)
+  (let ((i# (gensym)))
+    `(loop :for ,i# :in (list ,@transition-definition-args-list)
+           :collect (apply #'make-instance 'transition-definition ,i#))))
+
+(defmacro state-machine-of (state-machine-args
+                            state-definition-args-list
+                            transition-definition-args-list)
+  (let ((state-defs# (gensym))
+        (transition-defs# (gensym)))
+    `(let ((,state-defs# (state-definitions-of ,@state-definition-args-list))
+           (,transition-defs# (transition-definitions-of ,@transition-definition-args-list)))
        (apply #'make-instance 'state-machine
-              (append ,state-machine-args `(:state-definitions ,,state-defs#))))))
-
-
+              (append ,state-machine-args
+                      `(:state-definitions ,,state-defs#)
+                      `(:transition-definitions ,,transition-defs#))))))
 
 
 
@@ -322,55 +354,73 @@ list of `state-definition' instances"
 
 (test state-definitions-of
   (let* ((state-defs (state-definitions-of
-                      '(:state :a :event :go-to-a)
-                      '(:state :b :event :go-to-b)))
+                      '(:state :a)
+                      '(:state :b)))
          (sd-1 (first state-defs))
          (sd-2 (second state-defs)))
     (is (eq :a (state sd-1)))
-    (is (eq :go-to-a (event sd-1)))
-    (is (eq :b (state sd-2)))
-    (is (eq :go-to-b (event sd-2)))))
+    (is (eq :b (state sd-2)))))
+
+(test transition-definitions-of
+  (let* ((transition-defs (transition-definitions-of
+                           '(:from :a :to :b :event :a->b)
+                           '(:from :b :to :a :event :b->a)))
+         (td-1 (first transition-defs))
+         (td-2 (second transition-defs)))
+    (is (and (eq :a (from-state td-1))
+             (eq :b (to-state td-1))
+             (eq :a->b (event td-1))))
+    (is (and (eq :b (from-state td-2))
+             (eq :a (to-state td-2))
+             (eq :b->a (event td-2))))))
+
 
 (test state-machine-of
   (let ((state-m (state-machine-of
                   '(:current-state :a)
-                  '(:state :a :event :go-to-a)
-                  '(:state :b :event :go-to-b))))
+                  (`(:state :a)
+                    `(:state :b))
+                  (`(:from :a :to :b :event :a->b)))))
     (is (eq :a (current-state state-m)))
     (let ((sd-1 (first (state-machine--state-definitions state-m)))
-          (sd-2 (second (state-machine--state-definitions state-m))))
+          (sd-2 (second (state-machine--state-definitions state-m)))
+          (td-1 (first (state-machine--transition-definitions state-m))))
       (is (eq :a (state sd-1)))
-      (is (eq :go-to-a (event sd-1)))
       (is (eq :b (state sd-2)))
-      (is (eq :go-to-b (event sd-2))))))
-
+      (is (and (eq :a (from-state td-1))
+               (eq :b (to-state td-1))
+               (eq :a->b (event td-1)))))))
 
 (defun state-machine-example-01 ()
   (state-machine-of '(:current-state :at-home)
-                    '(:event :go-to-work :state :at-work
-                      :requirement (:at-home))
-                    '(:event :go-home :state :at-home
-                      :requirement (:at-work))
-                    '(:event :go-to-sleep :state :in-bed
-                      :requirement (:at-home))
-                    '(:event :wake-up :state :at-home
-                      :requirement (:in-bed))
-                    '(:event :meditate :state :nirvana
-                      :requirement (:at-home) :terminal t)
-                    '(:event :make-big-money :state :being-rich
-                      :requirement (:at-work) :terminal t)))
+                    (`(:state :at-work)
+                      `(:state :at-home)
+                      `(:state :in-bed)
+                      `(:state :nirvana :terminal t)
+                      `(:state :being-rich :terminal t))
+                    (`(:from :at-home :to :at-work
+                       :event :home->work)
+                      `(:from :at-home :to :in-bed
+                        :event :home->bed)
+                      `(:from :at-home :to :nirvana
+                        :event :meditate)
+                      `(:from :at-work :to :at-home
+                        :event :work->home)
+                      `(:from :at-work :to :being-rich
+                        :event :show-me-the-money))))
 
 (defun state-machine-example--started ()
   (state-machine-of '(:current-state :a)
-                    '(:state :a)
-                    '(:state :b :event :go-to-b
-                      :requirement (:a) :terminal t)))
+                    (`(:state :a)
+                      `(:state :b :terminal t))
+                    (`(:from :a :to :b :event :a->b))))
 
 (defun state-machine-example--terminated ()
   (state-machine-of '(:current-state :b)
-                    '(:state :a)
-                    '(:state :b :event :go-to-b
-                      :requirement '(:a) :terminal t)))
+                    (`(:state :a)
+                      `(:state :b :terminal t))
+                    (`(:from :a :to :b :event :a->b))))
+
 
 #| FIXME
 (test find-state-definition-by-state
