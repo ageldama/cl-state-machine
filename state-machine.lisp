@@ -31,6 +31,9 @@
 
    :state-definitions-of
 
+   :call-before-hooks
+   :call-after-hooks
+
    ;; `transition-definition'
    :transition-definition
 
@@ -74,6 +77,8 @@
 
 (defpackage #:cl-state-machine-test
   (:use :common-lisp :it.bese.FiveAM :alexandria :cl-state-machine))
+
+;; TODO: defpackage cl-state-machine-graphviz
 
 
 
@@ -225,6 +230,9 @@ if it cannot be found."
       val)))
 
 (defun terminated? (a-state-machine)
+  "True if `a-state-machine' has reached to a `state-definition' which
+marked as `terminal' = true. Can signal `simple-error' on
+`a-state-machine' with illegal current state."
   (declare (type state-machine a-state-machine))
   (let* ((cur (current-state a-state-machine))
          (cur-state-def (find-state-definition-by-state a-state-machine cur)))
@@ -235,7 +243,8 @@ if it cannot be found."
 (defun possible-events (a-state-machine)
   "Find all possible `event'-symbols with current state of
 `a-state-machine'. Return a list of symbols and it can be empty if
-there's no other possible event or the state machine has terminated."
+there's no other possible event or the state machine has
+terminated. Signal `simple-error' on terminated `a-state-machine'"
   (declare (type state-machine a-state-machine))
   (when (terminated? a-state-machine)
     (return-from possible-events '()))
@@ -246,11 +255,15 @@ there's no other possible event or the state machine has terminated."
           '()))))
 
 (defun can? (a-state-machine event)
+  "Evaluate as true if `a-state-machine' can be `trigger!'-ed to
+`event'. Signal `simple-error' on terminated `a-state-machine'"
   (declare (type state-machine a-state-machine)
            (type symbol event))
   (member event (possible-events a-state-machine)))
 
 (defun find-transition-definition-by-state-and-event (a-state-machine state event)
+  "Can be evaluated as nil if there's no matching
+`transition-definition."
   (with-slots (%transition-definitions-by-state-event-tuple) a-state-machine
     (let ((state-event (cons state event)))
       (gethash state-event %transition-definitions-by-state-event-tuple))))
@@ -258,15 +271,30 @@ there's no other possible event or the state machine has terminated."
 (defun trigger! (a-state-machine event &rest args)
    "Trigger the `event' on given `a-state-machine' an instance of `state-machine'.
 
-Any argument can be passed as `args' to the `a-state-machine` and will
+Any argument can be passed as `args' to the `a-state-machine' and will
 be passed to its' callbacks TODO:"
   (declare (ignore event args) (type state-machine a-state-machine)
            (type symbol event))
   (when (terminated? a-state-machine)
     (return-from trigger! nil))
+  ;; TODO build `state-transition'
+  ;; TODO find `transition-definition'
+  ;; TODO find `state-definition'
+  ;; TODO check `before-hooks' of `a-state-machine'
+  ;; TODO check `before-hooks' of found `state-definition'
+  ;; TODO `jump!'
+  ;; TODO run `after-hooks' of `state-definition'
+  ;; TODO run `after-hooks' of `a-state-machine'
   nil)
 
 (defun call-before-hooks (an-before-hook-function-list a-state-transition)
+  "Evaluate functions in `an-before-hook-function-list'
+sequentially. Will be evaluated as nil when successfully evaluated
+every function. Each `before-hook-function' in
+`an-before-hook-function-list' supposed to be evaluated as true,
+otherwise this caller function will stop proceeding of evaluation of
+subsequent hook functions and will be evaluated as a function value
+that evaluated as false."
   (declare (type list an-before-hook-function-list)
            (type state-transition a-state-transition))
   (loop :for hook :in an-before-hook-function-list
@@ -274,23 +302,22 @@ be passed to its' callbacks TODO:"
         :unless retval
           :do (return-from call-before-hooks hook))
   nil)
-;; TODO docstring
-;; TODO test
 
 (defun call-after-hooks (an-after-hook-function-list a-state-transition)
+  "Evaluate functions in `an-after-hook-function-list'
+sequentially. Return nothing."
   (declare (type list an-after-hook-function-list)
            (type state-transition a-state-transition))
   (loop :for hook :in an-after-hook-function-list
         :do (funcall hook a-state-transition)))
-;; TODO docstring
-;; TODO test
 
 
 
 
 (defun jump! (a-state-machine state)
   "Set `current-state' of `a-state-machine' without invoking hook
-functions and any constraints check."
+functions and any constraints check. Signal `simple-error' when
+specified `state' is cannot be found in `a-state-machine'."
   (declare (type state-machine a-state-machine)
            (type symbol state))
   (with-slots (current-state %state-definition-by-state) a-state-machine
@@ -309,6 +336,7 @@ functions and any constraints check."
                %state-definition-by-state
                %possible-events-by-state
                %transition-definitions-by-state-event-tuple) a-state-machine
+    ;; fill state-definitions/state lookup table
     (loop :for state-def :in state-definitions
           :for state-name := (state state-def)
           :do (setf (gethash state-name %state-definition-by-state) state-def))
@@ -324,10 +352,11 @@ functions and any constraints check."
           :for state-name := (from-state transition-def)
           :for state-event-tuple := (cons state-name event-name)
           :do (progn
-                ;; possible-events-by-state
+                ;; fill possible-events/state lookup table
                 (gethash-list-append-item
                  state-name %possible-events-by-state event-name)
-                ;; transition-definitions by state-event tuple
+                ;; fill transition-definitions / state-event tuple
+                ;; lookup table
                 (if (gethash state-event-tuple
                              %transition-definitions-by-state-event-tuple)
                          (error (format nil "Duplicated state-event combination (~a)"
@@ -560,7 +589,7 @@ list of `state-definition' instances"
 (test can?-3
   (signals simple-error (can? (state-machine-example--wrong-current) :sth)))
 
-(test jump
+(test jump!
   (let ((count 0))
     (flet ((count++ (&rest args)
              (declare (ignore args))
@@ -583,7 +612,76 @@ list of `state-definition' instances"
     (declare (ignore sym))
     (is (eq :internal kind))))
 
+(defmacro append-item-f (a-list-place item)
+  `(setf ,a-list-place (append ,a-list-place (list ,item))))
 
-;; TODO: cl-state-machine-graphviz
+(test call-after-hooks
+  (let* ((sm (state-machine-example-01))
+         (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
+         (st (make-state-transition :state-machine sm
+                                    :transition-definition td))
+         (recording-hook-order '())
+         (recording-st-list '())
+         (hook-1 #'(lambda (st)
+                     (progn (append-item-f recording-st-list st)
+                            (append-item-f recording-hook-order :1)
+                            nil)))
+         (hook-2 #'(lambda (st)
+                     (progn (append-item-f recording-st-list st)
+                            (append-item-f recording-hook-order :2)
+                            nil)))
+         (hook-function-list (list hook-1 hook-2)))
+    (is-false (call-after-hooks hook-function-list st))
+    (is (= 2 (length recording-st-list)))
+    (is (equal '(:1 :2) recording-hook-order))
+    (is (and (equal (first recording-st-list) st)
+             (equal (second recording-st-list) st)))))
+
+(test call-before-hooks
+  (let* ((sm (state-machine-example-01))
+         (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
+         (st (make-state-transition :state-machine sm
+                                    :transition-definition td))
+         (recording-hook-order '())
+         (recording-st-list '())
+         (hook-1 #'(lambda (st)
+                     (progn (append-item-f recording-st-list st)
+                            (append-item-f recording-hook-order :1)
+                            t)))
+         (hook-2 #'(lambda (st)
+                     (progn (append-item-f recording-st-list st)
+                            (append-item-f recording-hook-order :2)
+                            t)))
+         (hook-function-list (list hook-1 hook-2)))
+    (is-false (call-before-hooks hook-function-list st))
+    (is (= 2 (length recording-st-list)))
+    (is (equal '(:1 :2) recording-hook-order))
+    (is (and (equal (first recording-st-list) st)
+             (equal (second recording-st-list) st)))))
+
+
+(test call-before-hooks-2
+  (let* ((sm (state-machine-example-01))
+         (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
+         (st (make-state-transition :state-machine sm
+                                    :transition-definition td))
+         (recording-hook-order '())
+         (recording-st-list '())
+         (hook-1 #'(lambda (st)
+                     (progn (append-item-f recording-st-list st)
+                            (append-item-f recording-hook-order :1)
+                            nil)))
+         (hook-2 #'(lambda (st)
+                     (progn (append-item-f recording-st-list st)
+                            (append-item-f recording-hook-order :2)
+                            t)))
+         (hook-function-list (list hook-1 hook-2)))
+    (is (eq hook-1 (call-before-hooks hook-function-list st)))
+    (is (= 1 (length recording-st-list)))
+    (is (equal '(:1) recording-hook-order))
+    (is (equal (first recording-st-list) st))))
+
+
+
 
 ;;; EOF
