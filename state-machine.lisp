@@ -256,16 +256,22 @@ there's no other possible event or the state machine has terminated."
 Any argument can be passed as `args' to the `a-state-machine` and will
 be passed to its' callbacks TODO:"))
 
-(defun jump! (a-state-machine event)
-  "TODO"
-  (declare (type state-machine a-state-machine)
-           (type symbol event)
-           (ignore a-state-machine event))
-  nil)
-
 ;; TODO: call-before-hooks
 
 ;; TODO: call-after-hooks
+
+
+
+(defun jump! (a-state-machine state)
+  "Set `current-state' of `a-state-machine' without invoking hook
+functions and any constraints check."
+  (declare (type state-machine a-state-machine)
+           (type symbol state))
+  (with-slots (current-state %state-definition-by-state) a-state-machine
+    (multiple-value-bind (state-def present?) (gethash state %state-definition-by-state)
+      (declare (ignore state-def))
+      (unless present? (error (format nil "Cannot `jump!' to (~a) (Undefined state)" state)))
+      (setf current-state state))))
 
 (defun gethash-list-append-item (key ht item)
   (setf (gethash key ht)
@@ -397,13 +403,28 @@ list of `state-definition' instances"
                (eq :b (to-state td-1))
                (eq :a->b (event td-1)))))))
 
-(defun state-machine-example-01 ()
-  (state-machine-of '(:current-state :at-home)
-                    (`(:state :at-work)
-                      `(:state :at-home)
-                      `(:state :in-bed)
-                      `(:state :nirvana :terminal t)
-                      `(:state :being-rich :terminal t))
+(defun state-machine-example-01 (&key (global-before-hooks '())
+                                   (global-after-hooks '())
+                                   (state-before-hooks '())
+                                   (state-after-hooks '()))
+  (state-machine-of `(:current-state :at-home
+                      :before-hooks ,global-before-hooks
+                      :after-hooks ,global-after-hooks)
+                    (`(:state :at-work
+                       :before-hooks ,state-before-hooks
+                       :after-hooks ,state-after-hooks)
+                      `(:state :at-home
+                        :before-hooks ,state-before-hooks
+                        :after-hooks ,state-after-hooks)
+                      `(:state :in-bed
+                        :before-hooks ,state-before-hooks
+                        :after-hooks ,state-after-hooks)
+                      `(:state :nirvana :terminal t
+                        :before-hooks ,state-before-hooks
+                        :after-hooks ,state-after-hooks)
+                      `(:state :being-rich :terminal t
+                        :before-hooks ,state-before-hooks
+                        :after-hooks ,state-after-hooks))
                     (`(:from :at-home :to :at-work
                        :event :home->work)
                       `(:from :at-home :to :in-bed
@@ -482,6 +503,21 @@ list of `state-definition' instances"
 (test can?-3
   (signals simple-error (can? (state-machine-example--wrong-current) :sth)))
 
+(test jump
+  (let ((count 0))
+    (flet ((count++ (&rest args)
+             (declare (ignore args))
+             (incf count)))
+      (let ((sm (state-machine-example-01 :global-before-hooks (list #'count++)
+                                          :global-after-hooks (list #'count++)
+                                          :state-before-hooks (list #'count++)
+                                          :state-after-hooks (list #'count++))))
+        ;; OK
+        (jump! sm :being-rich)
+        (is (eq (current-state sm) :being-rich))
+        (is (= 0 count))
+        ;; FAIL
+        (signals simple-error (jump! sm :a))))))
 
 (test state-machine-accessors
   ;; should not be accessible
