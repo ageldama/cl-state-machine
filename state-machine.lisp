@@ -427,6 +427,12 @@ list of `state-definition' instances"
                       `(:state :b :terminal t))
                     (`(:from :a :to :b :event :a->b))))
 
+(defun state-machine-example--wrong-current ()
+  (state-machine-of '(:current-state :x)
+                    (`(:state :a)
+                      `(:state :b :terminal t))
+                    (`(:from :a :to :b :event :a->b))))
+
 
 (test find-state-definition-by-state
   (let ((a-state-machine (state-machine-example-01)))
@@ -435,7 +441,8 @@ list of `state-definition' instances"
 
 (test terminated?
   (is-false (terminated? (state-machine-example--started)))
-  (is-true (terminated? (state-machine-example--terminated))))
+  (is-true (terminated? (state-machine-example--terminated)))
+  (signals simple-error (terminated? (state-machine-example--wrong-current))))
 
 (defun equal-set (a b)
   (and (zerop (length (set-difference a b)))
@@ -455,7 +462,8 @@ list of `state-definition' instances"
   (is-true (equal-set '(:home->work :home->bed :meditate)
                       (possible-events (state-machine-example-01))))
   (is-true (equal-set '(:a->b) (possible-events (state-machine-example--started))))
-  (is-true (equal-set '() (possible-events (state-machine-example--terminated)))))
+  (is-true (equal-set '() (possible-events (state-machine-example--terminated))))
+  (signals simple-error (possible-events (state-machine-example--wrong-current))))
 
 (test can?
   (let ((sm (state-machine-example-01)))
@@ -471,7 +479,8 @@ list of `state-definition' instances"
     (is-false (can? sm :meditate))
     (is-false (can? sm :work->home))))
 
-
+(test can?-3
+  (signals simple-error (can? (state-machine-example--wrong-current) :sth)))
 
 
 (test state-machine-accessors
