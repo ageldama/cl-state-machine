@@ -279,16 +279,16 @@ be passed to its' callbacks TODO:"))
     (loop :for state-def :in state-definitions
           :for state-name := (state state-def)
           :do (setf (gethash state-name %state-definition-by-state) state-def))
-    (loop :for transition-def :in transition-definitions
-          :for event-name := (event transition-def)
-          :for state-name := (from-state transition-def)
-          :do (gethash-list-append-item state-name %possible-events-by-state event-name))
     (let ((collected-count (hash-table-count %state-definition-by-state))
           (state-def-count (length state-definitions)))
       (when (/= collected-count state-def-count)
         ;; ensure no dups in states
         (error (format nil "Collected `state'-count (~a) does not match with length of `state-definitions' (~a)"
-                       collected-count state-def-count))))))
+                       collected-count state-def-count))))
+    (loop :for transition-def :in transition-definitions
+          :for event-name := (event transition-def)
+          :for state-name := (from-state transition-def)
+          :do (gethash-list-append-item state-name %possible-events-by-state event-name))))
 
 (defmacro state-definitions-of (&rest state-definition-args-list)
   "Turn lists of initargs for `(make-instance 'state-definition)` into
