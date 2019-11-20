@@ -551,10 +551,6 @@ list of `state-definition' instances"
     (let ((td (find-transition-definition-by-state-and-event sm :at-kino :fick)))
       (is-true  (null td)))))
 
-(defun equal-set (a b)
-  (and (zerop (length (set-difference a b)))
-       (zerop (length (set-difference b a)))))
-
 (test gethash-list-append-item
   (let ((ht (make-hash-table)))
     (cl-state-machine::gethash-list-append-item :a ht 'a)
@@ -566,10 +562,10 @@ list of `state-definition' instances"
              (equal '(x) (gethash :b ht))))))
 
 (test possible-events
-  (is-true (equal-set '(:home->work :home->bed :meditate)
+  (is-true (set-equal '(:home->work :home->bed :meditate)
                       (possible-events (state-machine-example-01))))
-  (is-true (equal-set '(:a->b) (possible-events (state-machine-example--started))))
-  (is-true (equal-set '() (possible-events (state-machine-example--terminated))))
+  (is-true (set-equal '(:a->b) (possible-events (state-machine-example--started))))
+  (is-true (set-equal '() (possible-events (state-machine-example--terminated))))
   (signals simple-error (possible-events (state-machine-example--wrong-current))))
 
 (test can?
