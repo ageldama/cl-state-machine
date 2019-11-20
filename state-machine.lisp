@@ -266,9 +266,25 @@ be passed to its' callbacks TODO:"
     (return-from trigger! nil))
   nil)
 
-;; TODO: call-before-hooks
+(defun call-before-hooks (an-before-hook-function-list a-state-transition)
+  (declare (type list an-before-hook-function-list)
+           (type state-transition a-state-transition))
+  (loop :for hook :in an-before-hook-function-list
+        :for retval := (funcall hook a-state-transition)
+        :unless retval
+          :do (return-from call-before-hooks hook))
+  nil)
+;; TODO docstring
+;; TODO test
 
-;; TODO: call-after-hooks
+(defun call-after-hooks (an-after-hook-function-list a-state-transition)
+  (declare (type list an-after-hook-function-list)
+           (type state-transition a-state-transition))
+  (loop :for hook :in an-after-hook-function-list
+        :do (funcall hook a-state-transition)))
+;; TODO docstring
+;; TODO test
+
 
 
 
