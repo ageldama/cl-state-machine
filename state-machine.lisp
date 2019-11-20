@@ -30,11 +30,14 @@
    :state-definition-list
    :state-definition-list?
 
+   :state-definitions-of
+
    ;; `state-machine'
    :current-state
    :before-hooks
    :after-hooks
    :state-machine
+   :state-machine--state-definitions
 
    :all-states-and-events
    :find-state-definition-by-state
@@ -42,7 +45,10 @@
    :can?
    :possible-events
    :terminated?
-   :trigger
+   :trigger!
+   :jump!
+
+   :state-machine-of
 
    ;; `state-transition'
    :state-transition
@@ -189,6 +195,7 @@
    (state-definitions
     :initarg :state-definitions
     :initform '()
+    :reader state-machine--state-definitions
     :documentation "List of `state-definition's. Will be evaluated
     before the state transition. Can reject the transition if any of
     hook function evaluated to `nil' and will stop evaluating the
@@ -278,13 +285,19 @@ there's no other possible event or the state machine has terminated."
 
 
 ;; TODO: make it as a function, no need to be a generic-function
-(defgeneric trigger (a-state-machine event &rest args)
+(defgeneric trigger! (a-state-machine event &rest args)
   (:documentation
    "Trigger the `event' on given `a-state-machine' an instance of `state-machine'.
 
 Any argument can be passed as `args' to the `a-state-machine` and will
 be passed to its' callbacks TODO:"))
 
+(defun jump! (a-state-machine event)
+  "TODO"
+  (declare (type state-machine a-state-machine)
+           (type symbol event)
+           (ignore a-state-machine event))
+  nil)
 
 ;; TODO: call-before-hooks
 
@@ -292,7 +305,7 @@ be passed to its' callbacks TODO:"))
 
 ;; TODO: initialize :after -- ensure no dup states/events in state-definitions
 
-;; TODO: state-machine builder DSL
+;; TODO: make it faster -- cached/hash-table
 
 (defmacro state-definitions-of (&rest state-definition-args-list)
   "Turn lists of initargs for `(make-instance 'state-definition)` into
@@ -353,56 +366,57 @@ list of `state-definition' instances"
                   (member :b s)))))
 
 
+(test state-definitions-of
+  (let* ((state-defs (state-definitions-of
+                      '(:state :a :event :go-to-a)
+                      '(:state :b :event :go-to-b)))
+         (sd-1 (first state-defs))
+         (sd-2 (second state-defs)))
+    (is (eq :a (state sd-1)))
+    (is (eq :go-to-a (event sd-1)))
+    (is (eq :b (state sd-2)))
+    (is (eq :go-to-b (event sd-2)))))
+
+(test state-machine-of
+  (let ((state-m (state-machine-of
+                  '(:current-state :a)
+                  '(:state :a :event :go-to-a)
+                  '(:state :b :event :go-to-b))))
+    (is (eq :a (current-state state-m)))
+    (let ((sd-1 (first (state-machine--state-definitions state-m)))
+          (sd-2 (second (state-machine--state-definitions state-m))))
+      (is (eq :a (state sd-1)))
+      (is (eq :go-to-a (event sd-1)))
+      (is (eq :b (state sd-2)))
+      (is (eq :go-to-b (event sd-2))))))
+
+
 (defun state-machine-example-01 ()
-  (make-instance 'state-machine
-                 :current-state :at-home
-                 :state-definitions
-                 `(,(make-instance 'state-definition
-                                   :event :go-to-work
-                                   :state :at-work
-                                   :requirement '(:at-home))
-                   ,(make-instance 'state-definition
-                                   :event :go-home
-                                   :state :at-home
-                                   :requirement '(:at-work))
-                   ,(make-instance 'state-definition
-                                   :event :go-to-sleep
-                                   :state :in-bed
-                                   :requirement '(:at-home))
-                   ,(make-instance 'state-definition
-                                   :event :wake-up
-                                   :state :at-home
-                                   :requirement '(:in-bed))
-                   ,(make-instance 'state-definition
-                                   :event :meditate
-                                   :state :nirvana
-                                   :requirement '(:at-home)
-                                   :terminal t)
-                   ,(make-instance 'state-definition
-                                   :event :make-big-money
-                                   :state :being-rich
-                                   :requirement '(:at-work)
-                                   :terminal t))))
+  (state-machine-of '(:current-state :at-home)
+                    '(:event :go-to-work :state :at-work
+                      :requirement (:at-home))
+                    '(:event :go-home :state :at-home
+                      :requirement (:at-work))
+                    '(:event :go-to-sleep :state :in-bed
+                      :requirement (:at-home))
+                    '(:event :wake-up :state :at-home
+                      :requirement (:in-bed))
+                    '(:event :meditate :state :nirvana
+                      :requirement (:at-home) :terminal t)
+                    '(:event :make-big-money :state :being-rich
+                      :requirement (:at-work) :terminal t)))
 
 (defun state-machine-example--started ()
-  (make-instance 'state-machine
-                 :current-state :a
-                 :state-definitions
-                 `(,(make-instance 'state-definition :state :a)
-                   ,(make-instance 'state-definition
-                                   :state :b :event :go-to-b
-                                   :requirement '(:a)
-                                   :terminal t))))
+  (state-machine-of '(:current-state :a)
+                    '(:state :a)
+                    '(:state :b :event :go-to-b
+                      :requirement (:a) :terminal t)))
 
 (defun state-machine-example--terminated ()
-  (make-instance 'state-machine
-                 :current-state :b
-                 :state-definitions
-                 `(,(make-instance 'state-definition :state :a)
-                   ,(make-instance 'state-definition
-                                   :state :b :event :go-to-b
-                                   :requirement '(:a)
-                                   :terminal t))))
+  (state-machine-of '(:current-state :b)
+                    '(:state :a)
+                    '(:state :b :event :go-to-b
+                      :requirement '(:a) :terminal t)))
 
 (test all-states-and-events
   (multiple-value-bind (states events)
@@ -451,16 +465,6 @@ list of `state-definition' instances"
     (declare (ignore sym))
     (is (eq :internal kind))))
 
-(test state-definitions-of
-  (let* ((state-defs (cl-state-machine::state-definitions-of
-                      '(:state :a :event :go-to-a)
-                      '(:state :b :event :go-to-b)))
-         (sd-1 (first state-defs))
-         (sd-2 (second state-defs)))
-    (is (eq :a (state sd-1)))
-    (is (eq :go-to-a (event sd-1)))
-    (is (eq :b (state sd-2)))
-    (is (eq :go-to-b (event sd-2)))))
 
 ;; TODO: cl-state-machine-graphviz
 
