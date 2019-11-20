@@ -193,7 +193,8 @@
     :initarg :transition-definitions :initform '()
     :type transition-definition-list :reader state-machine--transition-definitions
     :documentation "List of `transition-definition's.")
-   (%state-definition-by-state :initform (make-hash-table))))
+   (%state-definition-by-state :initform (make-hash-table))
+   (%possible-events-by-state :initform (make-hash-table))))
 
 
 (defstruct state-transition
@@ -229,8 +230,6 @@ if it cannot be found."
     (assert (not (null cur-state-def)))
     (terminal cur-state-def)))
 
-;; TODO faster
-#|
 (defun possible-events (a-state-machine)
   "Find all possible `event'-symbols with current state of
 `a-state-machine'. Return a list of symbols and it can be empty if
@@ -238,19 +237,16 @@ there's no other possible event or the state machine has terminated."
   (declare (type state-machine a-state-machine))
   (when (terminated? a-state-machine)
     (return-from possible-events '()))
-  (let ((events '())
-        (cur (current-state a-state-machine)))
-    (with-slots (state-definitions) a-state-machine
-      (loop :for state-def :in state-definitions
-            :if (member cur (requirement state-def))
-              :do (adjoinf events (event state-def))))
-    events))
+  (with-slots (%possible-events-by-state) a-state-machine
+    (multiple-value-bind (val present?) (gethash (current-state a-state-machine)
+                                                 %possible-events-by-state)
+      (if present? val
+          '()))))
 
 (defun can? (a-state-machine event)
   (declare (type state-machine a-state-machine)
            (type symbol event))
   (member event (possible-events a-state-machine)))
-|#
 
 ;; TODO: make it as a function, no need to be a generic-function
 (defgeneric trigger! (a-state-machine event &rest args)
@@ -271,12 +267,22 @@ be passed to its' callbacks TODO:"))
 
 ;; TODO: call-after-hooks
 
+(defun gethash-list-append-item (key ht item)
+  (setf (gethash key ht)
+        (append (gethash key ht '()) (list item))))
+
 (defmethod initialize-instance :after ((a-state-machine state-machine) &rest args)
   (declare (ignore args))
-  (with-slots (state-definitions %state-definition-by-state) a-state-machine
+  (with-slots (state-definitions transition-definitions
+               %state-definition-by-state
+               %possible-events-by-state) a-state-machine
     (loop :for state-def :in state-definitions
           :for state-name := (state state-def)
           :do (setf (gethash state-name %state-definition-by-state) state-def))
+    (loop :for transition-def :in transition-definitions
+          :for event-name := (event transition-def)
+          :for state-name := (from-state transition-def)
+          :do (gethash-list-append-item state-name %possible-events-by-state event-name))
     (let ((collected-count (hash-table-count %state-definition-by-state))
           (state-def-count (length state-definitions)))
       (when (/= collected-count state-def-count)
@@ -422,39 +428,50 @@ list of `state-definition' instances"
                     (`(:from :a :to :b :event :a->b))))
 
 
-#| FIXME
 (test find-state-definition-by-state
   (let ((a-state-machine (state-machine-example-01)))
     (is-false (null (find-state-definition-by-state a-state-machine :nirvana)))
     (is-true (null (find-state-definition-by-state a-state-machine :at-rome)))))
-|#
 
-#| FIXME
 (test terminated?
   (is-false (terminated? (state-machine-example--started)))
   (is-true (terminated? (state-machine-example--terminated))))
-|#
 
 (defun equal-set (a b)
   (and (zerop (length (set-difference a b)))
        (zerop (length (set-difference b a)))))
 
-#| FIXME
-(test possible-events
-  (is-true (equal-set '(:go-to-work :go-to-sleep :meditate)
-                      (possible-events (state-machine-example-01))))
-  (is-true (equal-set '(:go-to-b) (possible-events (state-machine-example--started))))
-  (is-true (equal-set '() (possible-events (state-machine-example--terminated)))))
-|#
+(test gethash-list-append-item
+  (let ((ht (make-hash-table)))
+    (cl-state-machine::gethash-list-append-item :a ht 'a)
+    (cl-state-machine::gethash-list-append-item :a ht 'b)
+    (cl-state-machine::gethash-list-append-item :b ht 'x)
+    ;;
+    (is (= 2 (hash-table-count ht)))
+    (is (and (equal '(a b) (gethash :a ht))
+             (equal '(x) (gethash :b ht))))))
 
-#| FIXME
+(test possible-events
+  (is-true (equal-set '(:home->work :home->bed :meditate)
+                      (possible-events (state-machine-example-01))))
+  (is-true (equal-set '(:a->b) (possible-events (state-machine-example--started))))
+  (is-true (equal-set '() (possible-events (state-machine-example--terminated)))))
+
 (test can?
   (let ((sm (state-machine-example-01)))
     (is-true (can? sm :meditate))
-    (is-true (can? sm :go-to-sleep))
-    (is-true (can? sm :go-to-work))
-    (is-false (can? sm :go-home))))
-|#
+    (is-true (can? sm :home->bed))
+    (is-true (can? sm :home->bed))
+    (is-false (can? sm :work->home))))
+
+(test can?-2
+  (let ((sm (state-machine-example--terminated)))
+    (is-false (can? sm :a->b))
+    (is-false (can? sm :b->a))
+    (is-false (can? sm :meditate))
+    (is-false (can? sm :work->home))))
+
+
 
 
 (test state-machine-accessors
