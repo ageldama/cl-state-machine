@@ -140,15 +140,19 @@
     :documentation "Mark it as terminal state.")
    (before-hooks
     :initarg :before-hooks :initform (list #'always-t) :type function-list :accessor before-hooks
-    :documentation "List of `before-hook-function's. Will be evaluated
-    sequentially before trainsition of the state of `state-machine' to
-    this `state-definition', and each hook function should return a
-    boolean value. When a hook function evaluated as false, reject the
-    state transition and stop the evaluation of rest hook functions.")
+    :documentation "List of `before-hook-function's.
+
+ Will be evaluated sequentially before trainsition of the state of
+    `state-machine' to this `state-definition', and each hook function
+    should return a boolean value.
+
+When a hook function evaluated as false value, will reject the state
+    transition and stop the evaluation of rest hook functions.")
    (after-hooks
     :initarg :after-hooks :initform '() :type function-list :accessor after-hooks
-    :documentation "List of `after-hook-function'. Will be evaluated
-    when the state of `state-machine' has change to this
+    :documentation "List of `after-hook-function'.
+
+Will be evaluated when the state of `state-machine' has change to this
     `state-definition'.")))
 
 (defun state-definition-list? (a-list)
@@ -183,14 +187,18 @@
     :documentation "Current state of the `state-machine', can be `nil'.")
    (before-hooks
     :initarg :before-hooks :initform '() :type function-list :accessor before-hooks
-    :documentation "List of `before-hook-function's. Will be evaluated
-    on every state transition of this `state-machine'
-    sequentially. When a hook function evaluated as false, reject the
+    :documentation "List of `before-hook-function's.
+
+Will be evaluated on every state transition of this `state-machine'
+    sequentially.
+
+ When a hook function evaluated as false, reject the
     state transition and stop the evaluation of rest hook functions.")
    (after-hooks
     :initarg :after-hooks :initform '() :type function-list :accessor after-hooks
-    :documentation "List of `after-hook-function's. Will be evaluated
-    on every state transition of this `state-machine'.")
+    :documentation "List of `after-hook-function's.
+
+Will be evaluated on every state transition of this `state-machine'.")
    (state-definitions
     :initarg :state-definitions :initform '()
     :type state-definition-list :reader state-machine--state-definitions
@@ -218,8 +226,9 @@ value of each `state-definition'."
   (args nil :type t :read-only t))
 
 (defun find-state-definition-by-state (a-state-machine state)
-  "Find a matching `state-definition' by given `state'-symbol. `nil'
-if it cannot be found."
+  "Find a matching `state-definition' by given `state'-symbol.
+
+Evaluated as `nil' if it cannot be found."
   (declare (type state-machine a-state-machine)
            (type symbol state))
   (with-slots (%state-definition-by-state) a-state-machine
@@ -231,8 +240,10 @@ if it cannot be found."
 
 (defun terminated? (a-state-machine)
   "True if `a-state-machine' has reached to a `state-definition' which
-marked as `terminal' = true. Can signal `simple-error' on
-`a-state-machine' with illegal current state."
+marked as `terminal' = true.
+
+Can signal `simple-error' on `a-state-machine' with illegal current
+state."
   (declare (type state-machine a-state-machine))
   (let* ((cur (current-state a-state-machine))
          (cur-state-def (find-state-definition-by-state a-state-machine cur)))
@@ -242,9 +253,12 @@ marked as `terminal' = true. Can signal `simple-error' on
 
 (defun possible-events (a-state-machine)
   "Find all possible `event'-symbols with current state of
-`a-state-machine'. Return a list of symbols and it can be empty if
-there's no other possible event or the state machine has
-terminated. Signal `simple-error' on terminated `a-state-machine'"
+`a-state-machine'.
+
+Return a list of symbols and it can be empty if there's no other
+possible event or the state machine has terminated.
+
+Signal `simple-error' on terminated `a-state-machine'"
   (declare (type state-machine a-state-machine))
   (when (terminated? a-state-machine)
     (return-from possible-events '()))
@@ -268,29 +282,88 @@ terminated. Signal `simple-error' on terminated `a-state-machine'"
     (let ((state-event (cons state event)))
       (gethash state-event %transition-definitions-by-state-event-tuple))))
 
-(defun trigger! (a-state-machine event &rest args)
-   "Trigger the `event' on given `a-state-machine' an instance of `state-machine'.
 
-Any argument can be passed as `args' to the `a-state-machine' and will
-be passed to its' callbacks TODO:"
-  (declare (ignore event args) (type state-machine a-state-machine)
+(defun jump! (a-state-machine state)
+  "Set `current-state' of `a-state-machine' without invoking hook
+functions and any constraints check.
+
+Signal `simple-error' when specified `state' is cannot be found in
+`a-state-machine'."
+  (declare (type state-machine a-state-machine)
+           (type symbol state))
+  (with-slots (current-state %state-definition-by-state) a-state-machine
+    (multiple-value-bind (state-def present?) (gethash state %state-definition-by-state)
+      (declare (ignore state-def))
+      (unless present? (error "Cannot `jump!' to (~a) (Undefined state)" state))
+      (setf current-state state))))
+
+
+(defun trigger! (a-state-machine event &rest args)
+   "Trigger the `event' on given `a-state-machine' an instance of
+`state-machine' and evaluated as matching `state-definition'.
+
+Any argument can be passed as `args' to the `before-hooks' and
+`after-hooks' in `a-state-machine' and its' matching
+`state-definition'.
+
+If any function of `before-hooks' in `a-state-machine' or the matching
+`state-definition' evaluated as false value, the transition will be
+rejected and signal `simple-error'.
+
+And such rejection will suppress the consequent evaluation of
+`before-hooks' and `after-hooks' in `a-state-machine' and the matching
+`state-definition' as well."
+  (declare (type state-machine a-state-machine)
            (type symbol event))
   (when (terminated? a-state-machine)
     (return-from trigger! nil))
-  ;; TODO build `state-transition'
-  ;; TODO find `transition-definition'
-  ;; TODO find `state-definition'
-  ;; TODO check `before-hooks' of `a-state-machine'
-  ;; TODO check `before-hooks' of found `state-definition'
-  ;; TODO `jump!'
-  ;; TODO run `after-hooks' of `state-definition'
-  ;; TODO run `after-hooks' of `a-state-machine'
-  nil)
+  (let* ((cur-state (current-state a-state-machine))
+         ;; find `transition-definition'
+         (transition-def
+           (find-transition-definition-by-state-and-event a-state-machine
+                                                          cur-state
+                                                          event))
+         (transition-def-nil? (unless transition-def
+                                (error "`transition-definition' cannot be found by state/event (~a, ~a) in `state-machine' (~a)"
+                                       cur-state event a-state-machine)))
+         (next-state (state transition-def))
+         ;; find `state-definition'
+         (state-def (find-state-definition-by-state
+                     a-state-machine next-state))
+         (state-def-nil? (unless state-def
+                           (error "`state-definition' for state (~a) in `state-machine' (~a)"
+                                  next-state a-state-machine)))
+        ;; build `state-transition'
+        (a-state-transition (make-state-transition :state-machine a-state-machine
+                                                   :transition-definition transition-def
+                                                   :args args)))
+    (declare (ignore transition-def-nil? state-def-nil?))
+    ;; check `before-hooks' of `a-state-machine'
+    (let ((state-machine-before-hooks-result
+            (call-before-hooks (before-hooks a-state-machine)
+                               a-state-transition)))
+      (when state-machine-before-hooks-result
+        (error "`before-hooks' -- rejected by a hook function (~a) in `state-machine' (~a)"
+             state-machine-before-hooks-result a-state-machine)))
+    ;; check `before-hooks' of found `state-definition'
+    (let ((state-def-before-hooks-result
+            (call-before-hooks (before-hooks state-def)
+                               a-state-transition)))
+      (when state-def-before-hooks-result
+        (error "`before-hooks' -- reject by a hook function (~a) in `state-definition' (~a)"
+               state-def-before-hooks-result state-def)))
+    ;; `jump!' and `call-after-hooks's
+    (jump! a-state-machine next-state)
+    (call-after-hooks (after-hooks a-state-machine) a-state-transition)
+    (call-after-hooks (after-hooks state-def) a-state-transition)
+    state-def))
 
 (defun call-before-hooks (an-before-hook-function-list a-state-transition)
   "Evaluate functions in `an-before-hook-function-list'
-sequentially. Will be evaluated as nil when successfully evaluated
-every function. Each `before-hook-function' in
+sequentially.
+
+Will be evaluated as nil when successfully evaluated every
+function. Each `before-hook-function' in
 `an-before-hook-function-list' supposed to be evaluated as true,
 otherwise this caller function will stop proceeding of evaluation of
 subsequent hook functions and will be evaluated as a function value
@@ -314,18 +387,6 @@ sequentially. Return nothing."
 
 
 
-(defun jump! (a-state-machine state)
-  "Set `current-state' of `a-state-machine' without invoking hook
-functions and any constraints check. Signal `simple-error' when
-specified `state' is cannot be found in `a-state-machine'."
-  (declare (type state-machine a-state-machine)
-           (type symbol state))
-  (with-slots (current-state %state-definition-by-state) a-state-machine
-    (multiple-value-bind (state-def present?) (gethash state %state-definition-by-state)
-      (declare (ignore state-def))
-      (unless present? (error (format nil "Cannot `jump!' to (~a) (Undefined state)" state)))
-      (setf current-state state))))
-
 (defun gethash-list-append-item (key ht item)
   (setf (gethash key ht)
         (append (gethash key ht '()) (list item))))
@@ -344,9 +405,8 @@ specified `state' is cannot be found in `a-state-machine'."
           (state-def-count (length state-definitions)))
       (when (/= collected-count state-def-count)
         ;; ensure no dups in states
-        (error (format nil
-                       "Collected `state'-count (~a) does not match with length of `state-definitions' (~a)"
-                       collected-count state-def-count))))
+        (error "Collected `state'-count (~a) does not match with length of `state-definitions' (~a)"
+               collected-count state-def-count)))
     (loop :for transition-def :in transition-definitions
           :for event-name := (event transition-def)
           :for state-name := (from-state transition-def)
@@ -359,8 +419,8 @@ specified `state' is cannot be found in `a-state-machine'."
                 ;; lookup table
                 (if (gethash state-event-tuple
                              %transition-definitions-by-state-event-tuple)
-                         (error (format nil "Duplicated state-event combination (~a)"
-                                        state-event-tuple))
+                         (error "Duplicated state-event combination (~a)"
+                                state-event-tuple)
                          ;; else, OK
                          (setf (gethash state-event-tuple
                                         %transition-definitions-by-state-event-tuple)
@@ -389,6 +449,10 @@ list of `state-definition' instances"
               (append ,state-machine-args
                       `(:state-definitions ,,state-defs#)
                       `(:transition-definitions ,,transition-defs#))))))
+
+;; TODO print-object state-machine
+;; TODO print-object transition-definition
+;; TODO print-object state-definition
 
 
 
@@ -678,6 +742,7 @@ list of `state-definition' instances"
     (is (equal (first recording-st-list) st))))
 
 
+;; TODO test `trigger!'
 
 
 ;;; EOF
