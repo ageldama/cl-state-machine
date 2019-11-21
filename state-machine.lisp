@@ -486,6 +486,8 @@ list of `state-definition' instances"
 
 (def-suite test-suite)
 
+(def-suite skip-suite)
+
 (in-suite test-suite)
 
 ;;; Do it! (fiveam:run! 'cl-state-machine-test:test-suite)
@@ -705,6 +707,11 @@ list of `state-definition' instances"
 (defmacro append-item-f (a-list-place item)
   `(setf ,a-list-place (append ,a-list-place (list ,item))))
 
+(test (append-item-f-really? :suite skip-suite)
+  (let ((l '()))
+    (append-item-f l :a)
+    (is (equal '(:a) l))))
+
 (test call-after-hooks ;; TODO simplify
   (let* ((sm (state-machine-example-01))
          (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
@@ -784,6 +791,7 @@ list of `state-definition' instances"
 (defstruct id-append-item state-transition id args)
 
 (defmacro id-append-item-f-hook (list-place id retval)
+  "TODO"
   (let ((args# (gensym))
         (item# (gensym)))
     `#'(lambda (a-state-transition &rest rest-args)
@@ -795,23 +803,28 @@ list of `state-definition' instances"
            (append-item-f ,list-place ,item#))
          ,retval)))
 
+(defmacro with-hook-recorder ((recordings-name make-hook-name) &rest body)
+  "TODO"
+  `(let ((,recordings-name '()))
+     (flet ((,make-hook-name (id ret-val)
+              (id-append-item-f-hook ,recordings-name id ret-val)))
+       ,@body)))
+
 (test trigger!-ok
-  (let ((recording-hooks '()))
-    (macrolet ((make-hook (id)
-                 `(id-append-item-f-hook recording-hooks ,id t)))
+  (with-hook-recorder (records make-hook)
     (let* ((sm (state-machine-example-01
                 :global-before-hooks
-                (list (make-hook :global-before-a)
-                      (make-hook :global-before-b))
+                (list (make-hook :global-before-a t)
+                      (make-hook :global-before-b t))
                 :global-after-hooks
-                (list (make-hook :global-after-a)
-                      (make-hook :global-after-b))
+                (list (make-hook :global-after-a t)
+                      (make-hook :global-after-b t))
                 :state-before-hooks
-                (list (make-hook :state-before-a)
-                      (make-hook :state-before-b))
+                (list (make-hook :state-before-a t)
+                      (make-hook :state-before-b t))
                 :state-after-hooks
-                (list (make-hook :state-after-a)
-                      (make-hook :state-after-b))))
+                (list (make-hook :state-after-a t)
+                      (make-hook :state-after-b t))))
            (foobar (gensym)))
       (is (eq (current-state sm) :at-home))
       (let ((state-def (trigger! sm :meditate foobar)))
@@ -821,12 +834,11 @@ list of `state-definition' instances"
                    :state-before-a :state-before-b
                    :state-after-a :state-after-b
                    :global-after-a :global-after-b)
-                 (loop :for i :in recording-hooks
+                 (loop :for i :in records
                        :collect (id-append-item-id i))))
-      (loop :for i :in recording-hooks
+      (loop :for i :in records
                    :do (is (equal (list foobar)
-                                  (id-append-item-args i))))
-      ))))
+                                  (id-append-item-args i)))))))
 
 
 
