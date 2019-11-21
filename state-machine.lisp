@@ -76,7 +76,8 @@
    ))
 
 (defpackage #:cl-state-machine-test
-  (:use :common-lisp :it.bese.FiveAM :alexandria :cl-state-machine))
+  (:use :common-lisp :it.bese.FiveAM :alexandria :cl-state-machine)
+  (:export :test-suite))
 
 ;; TODO: defpackage cl-state-machine-graphviz
 
@@ -329,6 +330,10 @@ Signal `simple-error' when specified `state' is cannot be found in
    "Trigger the `event' on given `a-state-machine' an instance of
 `state-machine' and evaluated as matching `state-definition'.
 
+TODO return-vals -- terminated? can? --> TODO errors
+
+TODO global-before -> state-before -> state-after -> global-after
+
 Any argument can be passed as `args' to the `before-hooks' and
 `after-hooks' in `a-state-machine' and its' matching
 `state-definition'.
@@ -344,6 +349,8 @@ And such rejection will suppress the consequent evaluation of
            (type symbol event))
   (when (terminated? a-state-machine)
     (return-from trigger! nil))
+  (unless (can? a-state-machine event)
+    (return-from trigger! nil))
   (let* ((cur-state (current-state a-state-machine))
          ;; find `transition-definition'
          (transition-def
@@ -353,7 +360,7 @@ And such rejection will suppress the consequent evaluation of
          (transition-def-nil? (unless transition-def
                                 (error "`transition-definition' cannot be found by state/event (~a, ~a) in `state-machine' (~a)"
                                        cur-state event a-state-machine)))
-         (next-state (state transition-def))
+         (next-state (to-state transition-def))
          ;; find `state-definition'
          (state-def (find-state-definition-by-state
                      a-state-machine next-state))
@@ -381,8 +388,8 @@ And such rejection will suppress the consequent evaluation of
                state-def-before-hooks-result state-def)))
     ;; `jump!' and `call-after-hooks's
     (jump! a-state-machine next-state)
-    (call-after-hooks (after-hooks a-state-machine) a-state-transition)
     (call-after-hooks (after-hooks state-def) a-state-transition)
+    (call-after-hooks (after-hooks a-state-machine) a-state-transition)
     state-def))
 
 (defun call-before-hooks (an-before-hook-function-list a-state-transition)
@@ -482,7 +489,11 @@ list of `state-definition' instances"
 
 (in-package :cl-state-machine-test)
 
-;;; Do it! (fiveam:run!)
+(def-suite test-suite)
+
+(in-suite test-suite)
+
+;;; Do it! (fiveam:run! 'cl-state-machine-test:test-suite)
 
 (test typep--state-definition-list
   (is-true (typep '() 'state-definition-list))
@@ -673,7 +684,7 @@ list of `state-definition' instances"
 (test can?-3
   (signals simple-error (can? (state-machine-example--wrong-current) :sth)))
 
-(test jump!
+(test jump! ;; TODO simplify
   (let ((count 0))
     (flet ((count++ (&rest args)
              (declare (ignore args))
@@ -699,7 +710,7 @@ list of `state-definition' instances"
 (defmacro append-item-f (a-list-place item)
   `(setf ,a-list-place (append ,a-list-place (list ,item))))
 
-(test call-after-hooks
+(test call-after-hooks ;; TODO simplify
   (let* ((sm (state-machine-example-01))
          (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
          (st (make-state-transition :state-machine sm
@@ -721,7 +732,7 @@ list of `state-definition' instances"
     (is (and (equal (first recording-st-list) st)
              (equal (second recording-st-list) st)))))
 
-(test call-before-hooks
+(test call-before-hooks ;; TODO simplify
   (let* ((sm (state-machine-example-01))
          (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
          (st (make-state-transition :state-machine sm
@@ -744,7 +755,7 @@ list of `state-definition' instances"
              (equal (second recording-st-list) st)))))
 
 
-(test call-before-hooks-2
+(test call-before-hooks-2 ;; TODO simplify
   (let* ((sm (state-machine-example-01))
          (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
          (st (make-state-transition :state-machine sm
@@ -766,7 +777,63 @@ list of `state-definition' instances"
     (is (equal (first recording-st-list) st))))
 
 
-;; TODO test `trigger!'
+(test trigger!-on-terminated
+  (is-false (trigger! (state-machine-example--terminated)  :a->b)))
+
+(test trigger!-invalid-event
+  (let ((sm (state-machine-example-01)))
+    (is (eq (current-state sm) :at-home))
+    (is-false (trigger! sm (gensym)))
+    (is (eq (current-state sm) :at-home))))
+
+(defstruct id-append-item state-transition id args)
+
+(defmacro id-append-item-f-hook (list-place id retval)
+  `#'(lambda (a-state-transition &rest args)
+       (append-item-f ,list-place
+                      (make-id-append-item :state-transition a-state-transition
+                                           :id ,id :args args))
+       ,retval))
+
+(test trigger!-ok
+  (let ((recording-hooks '()))
+    (macrolet ((make-hook (id)
+                 `(id-append-item-f-hook recording-hooks ,id t)))
+    (let* ((sm (state-machine-example-01
+                :global-before-hooks
+                (list (make-hook :global-before-a)
+                      (make-hook :global-before-b))
+                :global-after-hooks
+                (list (make-hook :global-after-a)
+                      (make-hook :global-after-b))
+                :state-before-hooks
+                (list (make-hook :state-before-a)
+                      (make-hook :state-before-b))
+                :state-after-hooks
+                (list (make-hook :state-after-a)
+                      (make-hook :state-after-b))))
+           (foobar (gensym)))
+      (is (eq (current-state sm) :at-home))
+      (let ((state-def (trigger! sm :meditate foobar)))
+        (is (and (eq (current-state sm) :nirvana)
+                 (eq (current-state sm) (state state-def)))))
+      (is (equal '(:global-before-a :global-before-b
+                   :state-before-a :state-before-b
+                   :state-after-a :state-after-b
+                   :global-after-a :global-after-b)
+                 (loop :for i :in recording-hooks
+                       :collect (id-append-item-id i))))
+      (is-true (every #'(lambda (i) (eq i foobar)) ;; TODO fixme
+                      (loop :for i :in recording-hooks
+                            :do (print (id-append-item-args i))
+                            :collect (id-append-item-args i))))))))
+
+
+
+;; TODO can `state-machine'-level `before-hooks' reject?
+;; TODO can `state-definition'-level `before-hooks' reject?
+
+
 
 
 ;;; EOF
