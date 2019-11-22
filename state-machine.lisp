@@ -264,8 +264,8 @@ Evaluated as `nil' if it cannot be found."
   "True if `a-state-machine' has reached to a `state-definition' which
 marked as `terminal' = true.
 
-TODO: Can signal `simple-error' on `a-state-machine' with illegal
-current state."
+Can signal `simple-error' on `a-state-machine' with illegal current
+state."
   (declare (type state-machine a-state-machine))
   (let* ((cur (current-state a-state-machine))
          (cur-state-def (find-state-definition-by-state a-state-machine cur)))
@@ -280,7 +280,7 @@ current state."
 Return a list of symbols and it can be empty if there's no other
 possible event or the state machine has terminated.
 
-TODO: Signal `simple-error' on terminated `a-state-machine'"
+Signal `simple-error' on `a-state-machine' of illegal current state."
   (declare (type state-machine a-state-machine))
   (when (terminated? a-state-machine)
     (return-from possible-events '()))
@@ -292,7 +292,10 @@ TODO: Signal `simple-error' on terminated `a-state-machine'"
 
 (defun can? (a-state-machine event)
   "Evaluate as true if `a-state-machine' can be `trigger!'-ed to
-`event'. Signal `simple-error' on terminated `a-state-machine' TODO"
+`event'. If `a-state-machine` has been terminated, it will be
+evaluated as false as well.
+
+Signal `simple-error' on `a-state-machine' of illegal current state."
   (declare (type state-machine a-state-machine)
            (type symbol event))
   (member event (possible-events a-state-machine)))
@@ -309,42 +312,54 @@ TODO: Signal `simple-error' on terminated `a-state-machine'"
   "Set `current-state' of `a-state-machine' without invoking hook
 functions and any constraints check.
 
-TODO Signal `simple-error' when specified `state' is cannot be found in
+Signal `simple-error' when specified `state' is cannot be found in
 `a-state-machine'."
   (declare (type state-machine a-state-machine)
            (type symbol state))
   (with-slots (current-state %state-definition-by-state) a-state-machine
     (multiple-value-bind (state-def present?) (gethash state %state-definition-by-state)
       (declare (ignore state-def))
-      (unless present? (error "Cannot `jump!' to (~a) (Undefined state)" state))       ;; TODO
+      (unless present? (error "Cannot `jump!' to (~a) (Undefined state)" state))
       (setf current-state state))))
 
 
 (defun trigger! (a-state-machine event &rest args)
-   "Trigger the `event' on given `a-state-machine' an instance of
-`state-machine' and evaluated as matching `state-definition'.
+   "Trigger the `event' on given `a-state-machine'.
 
-TODO return-vals -- terminated? can? --> TODO errors
+Evaluation values are: `(values A-STATE-DEFINITION REJECTED? REJECTION-REASON)'
 
-TODO global-before -> state-before -> state-after -> global-after
+On success, `A-STATE-DEFINITION' is corresponding `state-definition'
+of triggered state and `REJECTED?', `REJECTION-REASON' are `nil'.
 
-Any argument can be passed as `args' to the `before-hooks' and
-`after-hooks' in `a-state-machine' and its' matching
-`state-definition'.
+If `state-machine' has terminated or the specified `event' cannot be
+triggered on current state, `REJECTED?' is `:CANNOT-BE-TRIGGERED' and
+`REJECTION-REASON' is the specified `event' parameter.
 
-If any function of `before-hooks' in `a-state-machine' or the matching
-`state-definition' evaluated as false value, the transition will be
-rejected and signal `simple-error'. ;; TODO
+If `state-machine' in illegal current state, will signal
+`simple-error'.
+
+Rest arguments `args' will be passed to the `before-hooks' and
+`after-hooks' in `a-state-machine' and its' corresponding
+`state-definition''s as well.
+
+The hook functions will be evaluated when the before and the after of
+state transition. The order of hook functions evaluation is:
+global-before -> state-before -> state-after -> global-after.
+
+If any function of `before-hooks' in `a-state-machine' or the
+corresponding `state-definition' has evaluated as false value, the
+transition will be rejected, `A-STATE-DEFINITION' is `nil',
+`REJECTED?' is one of `:STATE-MACHINE-BEFORE-HOOK-REJECTED' or
+`:STATE-DEFINITION-BEFORE-HOOK-REJECTED', and `REJECTION-REASON' is
+the hook function value that evaluated as false.
 
 And such rejection will suppress the consequent evaluation of
-`before-hooks' and `after-hooks' in `a-state-machine' and the matching
-`state-definition' as well."
+`before-hooks' and `after-hooks' in `a-state-machine' and the
+corresponding `state-definition' as well."
   (declare (type state-machine a-state-machine)
            (type symbol event))
-  (when (terminated? a-state-machine)
-    (return-from trigger! nil))
   (unless (can? a-state-machine event)
-    (return-from trigger! nil))
+    (return-from trigger! (values nil :cannot-be-triggered event)))
   (let* ((cur-state (current-state a-state-machine))
          ;; find `transition-definition'
          (transition-def
@@ -352,34 +367,36 @@ And such rejection will suppress the consequent evaluation of
                                                           cur-state
                                                           event))
          (transition-def-nil? (unless transition-def
-                                (error "`transition-definition' cannot be found by state/event (~a, ~a) in `state-machine' (~a)" ;; TODO
+                                (error "`transition-definition' cannot be found by state/event (~a, ~a) in `state-machine' (~a)"
                                        cur-state event a-state-machine)))
          (next-state (to-state transition-def))
          ;; find `state-definition'
          (state-def (find-state-definition-by-state
                      a-state-machine next-state))
          (state-def-nil? (unless state-def
-                           (error "`state-definition' for state (~a) in `state-machine' (~a)" ; TODO
+                           (error "`state-definition' for state (~a) in `state-machine' (~a) cannot be found"
                                   next-state a-state-machine)))
-        ;; build `state-transition'
-        (a-state-transition (make-state-transition :state-machine a-state-machine
-                                                   :transition-definition transition-def
-                                                   :args args)))
+         ;; build `state-transition'
+         (a-state-transition (make-state-transition :state-machine a-state-machine
+                                                    :transition-definition transition-def
+                                                    :args args)))
     (declare (ignore transition-def-nil? state-def-nil?))
     ;; check `before-hooks' of `a-state-machine'
     (let ((state-machine-before-hooks-result
             (call-before-hooks (before-hooks a-state-machine)
                                a-state-transition)))
       (when state-machine-before-hooks-result
-        (error "`before-hooks' -- rejected by a hook function (~a) in `state-machine' (~a)" ; TODO
-             state-machine-before-hooks-result a-state-machine)))
+        (return-from trigger! (values nil
+                                      :state-machine-before-hook-rejected
+                                      state-machine-before-hooks-result))))
     ;; check `before-hooks' of found `state-definition'
     (let ((state-def-before-hooks-result
             (call-before-hooks (before-hooks state-def)
                                a-state-transition)))
       (when state-def-before-hooks-result
-        (error "`before-hooks' -- reject by a hook function (~a) in `state-definition' (~a)" ; TODO
-               state-def-before-hooks-result state-def)))
+        (return-from trigger! (values nil
+                                      :state-definition-before-hook-rejected
+                                      state-def-before-hooks-result))))
     ;; `jump!'
     (jump! a-state-machine next-state)
     ;; and `call-after-hooks's
@@ -434,7 +451,7 @@ sequentially. Return nothing."
           (state-def-count (length state-definitions)))
       (when (/= collected-count state-def-count)
         ;; ensure no dups in states
-        (error "Collected `state'-count (~a) does not match with length of `state-definitions' (~a)" ; TODO
+        (error "Collected `state'-count (~a) does not match with length of `state-definitions' (~a)"
                collected-count state-def-count)))
     (loop :for transition-def :in transition-definitions
           :for event-name := (event transition-def)
@@ -448,12 +465,12 @@ sequentially. Return nothing."
                 ;; lookup table
                 (if (gethash state-event-tuple
                              %transition-definitions-by-state-event-tuple)
-                         (error "Duplicated state-event combination (~a)" ; TODO
-                                state-event-tuple)
-                         ;; else, OK
-                         (setf (gethash state-event-tuple
-                                        %transition-definitions-by-state-event-tuple)
-                               transition-def))))))
+                    (error "Duplicated state-event combination (~a)"
+                           state-event-tuple)
+                    ;; else, OK
+                    (setf (gethash state-event-tuple
+                                   %transition-definitions-by-state-event-tuple)
+                          transition-def))))))
 
 (defmacro state-definitions-of (&rest state-definition-args-list)
   "Turn lists of initargs for `(make-instance 'state-definition)` into
@@ -708,12 +725,10 @@ Append new `state-transition-record' at the end of `list-place'.
 
 Specify `id' slot as an identifier of new hook function. It will be
 matched with `id'-slot of corresponding `state-transition-record'."
-  (let ((args# (gensym))
-        (item# (gensym)))
+  (let ((item# (gensym)))
     `#'(lambda (a-state-transition &rest rest-args)
          (declare (ignore rest-args))
-         (let* ((,args# (state-transition-args a-state-transition))
-                (,item# (make-state-transition-record
+         (let* ((,item# (make-state-transition-record
                          :state-transition a-state-transition
                          :id ,a-state-transition-record-id)))
            (append-item-f ,list-place ,item#))
@@ -808,13 +823,29 @@ will be the first `list-place' parameter of it."
 
 
 (test trigger!-on-terminated
-  (is-false (trigger! (state-machine-example--terminated)  :a->b)))
+  (multiple-value-bind (next-state-def rejected? rejection-reason)
+      (trigger! (state-machine-example--terminated)  :a->b)
+    (is-false next-state-def)
+    (is (eq :cannot-be-triggered rejected?))
+    (is (eq :a->b rejection-reason))))
 
 (test trigger!-invalid-event
   (let ((sm (state-machine-example-01)))
     (is (eq (current-state sm) :at-home))
     (is-false (trigger! sm (gensym)))
     (is (eq (current-state sm) :at-home))))
+
+(test trigger!-invalid-event-2
+  (multiple-value-bind (next-state-def rejected? rejection-reason)
+      (trigger! (state-machine-example-01)  :a->b)
+    (is-false next-state-def)
+    (is (eq :cannot-be-triggered rejected?))
+    (is (eq :a->b rejection-reason))))
+
+(test trigger!-illegal-current-state
+  (signals simple-error (trigger! (state-machine-example--wrong-current)  :a->b)))
+
+
 
 (test trigger!-ok
   (with-state-transition-recorder
@@ -834,7 +865,11 @@ will be the first `list-place' parameter of it."
                         (make-hook :state-after-b t))))
              (passing-args (gensym)))
         (is (eq (current-state sm) :at-home))
-        (let ((state-def (trigger! sm :meditate passing-args)))
+        (multiple-value-bind (state-def rejected? rejection-reason)
+            (trigger! sm :meditate passing-args)
+          ;;
+          (is-false rejected?)
+          (is-false rejection-reason)
           (is (and (eq (current-state sm) :nirvana)
                    (eq (current-state sm) (state state-def)))))
         (is (equal '(:global-before-a :global-before-b
@@ -864,10 +899,11 @@ will be the first `list-place' parameter of it."
 (test trigger!-global-before-hook-rejection
   (with-state-transition-recorder
       (records make-hook)
-      (let* ((sm (state-machine-example-01
+      (let* ((bad-boy (make-hook :global-before-b nil))
+             (sm (state-machine-example-01
                   :global-before-hooks
                   (list (make-hook :global-before-a t)
-                        (make-hook :global-before-b nil)) ; <-- the guy
+                        bad-boy) ; <-- the guy
                   :global-after-hooks
                   (list (make-hook :global-after-a t))
                   :state-before-hooks
@@ -876,19 +912,25 @@ will be the first `list-place' parameter of it."
                   (list (make-hook :state-after-a t))))
              (passing-args (gensym)))
         (is (eq (current-state sm) :at-home))
-        (signals simple-error (trigger! sm :meditate passing-args))
-        (is (eq (current-state sm) :at-home)) ; not changed
-        (is (equal '(:global-before-a :global-before-b) ; no `global-after', `state-*'
-                   (mapcar #'state-transition-record-id records)))
-        (is-true (every #'(lambda (i) (equal (list passing-args)
-                                             (state-transition-args
-                                              (state-transition-record-state-transition i))))
-                        records)))))
+        (multiple-value-bind (next-state-def rejected? rejection-reason)
+            (trigger! sm :meditate passing-args)
+          (declare (ignore next-state-def))
+          ;;
+          (is (eq :state-machine-before-hook-rejected rejected?))
+          (is (eq bad-boy rejection-reason))
+          (is (eq (current-state sm) :at-home)) ; not changed
+          (is (equal '(:global-before-a :global-before-b) ; no `global-after', `state-*'
+                     (mapcar #'state-transition-record-id records)))
+          (is-true (every #'(lambda (i) (equal (list passing-args)
+                                               (state-transition-args
+                                                (state-transition-record-state-transition i))))
+                          records))))))
 
 (test trigger!-state-before-hook-rejection
   (with-state-transition-recorder
       (records make-hook)
-      (let* ((sm (state-machine-example-01
+      (let* ((bad-boy (make-hook :state-before-b nil))
+               (sm (state-machine-example-01
                   :global-before-hooks
                   (list (make-hook :global-before-a t)
                         (make-hook :global-before-b t))
@@ -896,19 +938,24 @@ will be the first `list-place' parameter of it."
                   (list (make-hook :global-after-a t))
                   :state-before-hooks
                   (list (make-hook :state-before-a t)
-                        (make-hook :state-before-b nil)) ; <-- the guy
+                        bad-boy) ; <-- the guy
                   :state-after-hooks
                   (list (make-hook :state-after-a t))))
              (passing-args (gensym)))
         (is (eq (current-state sm) :at-home))
-        (signals simple-error (trigger! sm :meditate passing-args))
-        (is (eq (current-state sm) :at-home)) ; not changed
-        (is (equal '(:global-before-a :global-before-b :state-before-a :state-before-b)
-                   (mapcar #'state-transition-record-id records)))
-        (is-true (every #'(lambda (i) (equal (list passing-args)
-                                             (state-transition-args
-                                              (state-transition-record-state-transition i))))
-                        records)))))
+        (multiple-value-bind (next-state-def rejected? rejection-reason)
+            (trigger! sm :meditate passing-args)
+          (declare (ignore next-state-def))
+          ;;
+          (is (eq :state-definition-before-hook-rejected rejected?))
+          (is (eq bad-boy rejection-reason))
+          (is (eq (current-state sm) :at-home)) ; not changed
+          (is (equal '(:global-before-a :global-before-b :state-before-a :state-before-b)
+                     (mapcar #'state-transition-record-id records)))
+          (is-true (every #'(lambda (i) (equal (list passing-args)
+                                               (state-transition-args
+                                                (state-transition-record-state-transition i))))
+                          records))))))
 
 
 
