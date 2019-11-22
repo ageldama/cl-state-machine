@@ -681,22 +681,6 @@ list of `state-definition' instances"
 (test can?-3
   (signals simple-error (can? (state-machine-example--wrong-current) :sth)))
 
-(test jump! ;; TODO simplify
-  (let ((count 0))
-    (flet ((count++ (&rest args)
-             (declare (ignore args))
-             (incf count)))
-      (let ((sm (state-machine-example-01 :global-before-hooks (list #'count++)
-                                          :global-after-hooks (list #'count++)
-                                          :state-before-hooks (list #'count++)
-                                          :state-after-hooks (list #'count++))))
-        ;; OK
-        (jump! sm :being-rich)
-        (is (eq (current-state sm) :being-rich))
-        (is (= 0 count))
-        ;; FAIL
-        (signals simple-error (jump! sm :a))))))
-
 (test state-machine-accessors
   ;; should not be accessible
   (multiple-value-bind (sym kind)
@@ -712,71 +696,102 @@ list of `state-definition' instances"
     (append-item-f l :a)
     (is (equal '(:a) l))))
 
-(test call-after-hooks ;; TODO simplify
-  (let* ((sm (state-machine-example-01))
-         (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
-         (st (make-state-transition :state-machine sm
-                                    :transition-definition td))
-         (recording-hook-order '())
-         (recording-st-list '())
-         (hook-1 #'(lambda (st)
-                     (progn (append-item-f recording-st-list st)
-                            (append-item-f recording-hook-order :1)
-                            nil)))
-         (hook-2 #'(lambda (st)
-                     (progn (append-item-f recording-st-list st)
-                            (append-item-f recording-hook-order :2)
-                            nil)))
-         (hook-function-list (list hook-1 hook-2)))
-    (is-false (call-after-hooks hook-function-list st))
-    (is (= 2 (length recording-st-list)))
-    (is (equal '(:1 :2) recording-hook-order))
-    (is (and (equal (first recording-st-list) st)
-             (equal (second recording-st-list) st)))))
+(defstruct state-transition-record state-transition id args
+           (:documentation "TODO"))
 
-(test call-before-hooks ;; TODO simplify
-  (let* ((sm (state-machine-example-01))
-         (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
-         (st (make-state-transition :state-machine sm
-                                    :transition-definition td))
-         (recording-hook-order '())
-         (recording-st-list '())
-         (hook-1 #'(lambda (st)
-                     (progn (append-item-f recording-st-list st)
-                            (append-item-f recording-hook-order :1)
-                            t)))
-         (hook-2 #'(lambda (st)
-                     (progn (append-item-f recording-st-list st)
-                            (append-item-f recording-hook-order :2)
-                            t)))
-         (hook-function-list (list hook-1 hook-2)))
-    (is-false (call-before-hooks hook-function-list st))
-    (is (= 2 (length recording-st-list)))
-    (is (equal '(:1 :2) recording-hook-order))
-    (is (and (equal (first recording-st-list) st)
-             (equal (second recording-st-list) st)))))
+(defmacro make-state-transition-record-appender (list-place id retval)
+  "TODO"
+  (let ((args# (gensym))
+        (item# (gensym)))
+    `#'(lambda (a-state-transition &rest rest-args)
+         (declare (ignore rest-args))
+         (let* ((,args# (state-transition-args a-state-transition))
+                (,item# (make-state-transition-record
+                         :state-transition a-state-transition
+                         :id ,id
+                         :args ,args#)))
+           (append-item-f ,list-place ,item#))
+         ,retval)))
 
+(defmacro with-state-transition-recorder ((records-name appender-maker-name) &rest body)
+  "TODO"
+  `(let ((,records-name '()))
+     (flet ((,appender-maker-name (id ret-val)
+              (make-state-transition-record-appender ,records-name id ret-val)))
+       ,@body)))
 
-(test call-before-hooks-2 ;; TODO simplify
-  (let* ((sm (state-machine-example-01))
-         (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
-         (st (make-state-transition :state-machine sm
-                                    :transition-definition td))
-         (recording-hook-order '())
-         (recording-st-list '())
-         (hook-1 #'(lambda (st)
-                     (progn (append-item-f recording-st-list st)
-                            (append-item-f recording-hook-order :1)
-                            nil)))
-         (hook-2 #'(lambda (st)
-                     (progn (append-item-f recording-st-list st)
-                            (append-item-f recording-hook-order :2)
-                            t)))
-         (hook-function-list (list hook-1 hook-2)))
-    (is (eq hook-1 (call-before-hooks hook-function-list st)))
-    (is (= 1 (length recording-st-list)))
-    (is (equal '(:1) recording-hook-order))
-    (is (equal (first recording-st-list) st))))
+(test jump!
+  (with-state-transition-recorder
+      (records make-hook)
+      (let ((sm (state-machine-example-01
+                 :global-before-hooks (list (make-hook :global-before t))
+                 :global-after-hooks (list (make-hook :global-after t))
+                 :state-before-hooks (list (make-hook :state-before t))
+                 :state-after-hooks (list (make-hook :state-after t)))))
+        ;; OK
+        (jump! sm :being-rich)
+        (is (eq (current-state sm) :being-rich))
+        (is (= 0 (length records))) ; should not evaluate any hook
+        ;; FAIL
+        (signals simple-error (jump! sm :a))
+        (is (= 0 (length records)))))) ; should not evaluate any hook
+
+(test call-after-hooks
+  (with-state-transition-recorder
+      (records make-hook)
+      (let* (;; `state-transition'
+             (sm (state-machine-example-01))
+             (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
+             (a-state-transition (make-state-transition :state-machine sm
+                                                        :transition-definition td))
+             ;; hooks
+             (hook-1 (make-hook :1 nil)) ; `after-hook' no care evaluated value
+             (hook-2 (make-hook :2 nil))
+             (hooks (list hook-1 hook-2)))
+        (is-false (call-after-hooks hooks a-state-transition))
+        (is (= 2 (length records)))
+        (is (equal '(:1 :2) (mapcar #'state-transition-record-id records)))
+        (is-true (every #'(lambda (i) (equal (state-transition-record-state-transition i)
+                                             a-state-transition))
+                        records)))))
+
+(test call-before-hooks
+  (with-state-transition-recorder
+      (records make-hook)
+      (let* (;; `state-transition'
+             (sm (state-machine-example-01))
+             (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
+             (a-state-transition (make-state-transition :state-machine sm
+                                                        :transition-definition td))
+             ;; hooks
+             (hook-1 (make-hook :1 t)) ; evaluted as true
+             (hook-2 (make-hook :2 t)) ; same here
+             (hooks (list hook-1 hook-2)))
+        (is-false (call-before-hooks hooks a-state-transition))
+        (is (= 2 (length records))) ; every hooks evaluated!
+        (is (equal '(:1 :2) (mapcar #'state-transition-record-id records)))
+        (is-true (every #'(lambda (i) (equal (state-transition-record-state-transition i)
+                                             a-state-transition))
+                        records)))))
+
+(test call-before-hooks-2
+  ;; Does `before-hook' evaluates as false reject consequent evaluations?
+  (with-state-transition-recorder
+      (records make-hook)
+      (let* (;; `state-transition'
+             (sm (state-machine-example-01))
+             (td (find-transition-definition-by-state-and-event sm :at-home :home->work))
+             (a-state-transition (make-state-transition :state-machine sm
+                                                        :transition-definition td))
+             ;; hooks
+             (hook-1 (make-hook :1 nil)) ; should stops here
+             (hook-2 (make-hook :2 t))   ; never be evaluated
+             (hooks (list hook-1 hook-2)))
+        (is (eq hook-1 (call-before-hooks hooks a-state-transition)))
+        (is (= 1 (length records)))
+        (is (equal '(:1) (mapcar #'state-transition-record-id records)))
+        (is (equal (state-transition-record-state-transition (first records))
+                   a-state-transition)))))
 
 
 (test trigger!-on-terminated
@@ -788,62 +803,91 @@ list of `state-definition' instances"
     (is-false (trigger! sm (gensym)))
     (is (eq (current-state sm) :at-home))))
 
-(defstruct id-append-item state-transition id args)
-
-(defmacro id-append-item-f-hook (list-place id retval)
-  "TODO"
-  (let ((args# (gensym))
-        (item# (gensym)))
-    `#'(lambda (a-state-transition &rest rest-args)
-         (declare (ignore rest-args))
-         (let* ((,args# (state-transition-args a-state-transition))
-                (,item# (make-id-append-item :state-transition a-state-transition
-                                             :id ,id
-                                             :args ,args#)))
-           (append-item-f ,list-place ,item#))
-         ,retval)))
-
-(defmacro with-hook-recorder ((recordings-name make-hook-name) &rest body)
-  "TODO"
-  `(let ((,recordings-name '()))
-     (flet ((,make-hook-name (id ret-val)
-              (id-append-item-f-hook ,recordings-name id ret-val)))
-       ,@body)))
-
 (test trigger!-ok
-  (with-hook-recorder (records make-hook)
-    (let* ((sm (state-machine-example-01
-                :global-before-hooks
-                (list (make-hook :global-before-a t)
-                      (make-hook :global-before-b t))
-                :global-after-hooks
-                (list (make-hook :global-after-a t)
-                      (make-hook :global-after-b t))
-                :state-before-hooks
-                (list (make-hook :state-before-a t)
-                      (make-hook :state-before-b t))
-                :state-after-hooks
-                (list (make-hook :state-after-a t)
-                      (make-hook :state-after-b t))))
-           (foobar (gensym)))
-      (is (eq (current-state sm) :at-home))
-      (let ((state-def (trigger! sm :meditate foobar)))
-        (is (and (eq (current-state sm) :nirvana)
-                 (eq (current-state sm) (state state-def)))))
-      (is (equal '(:global-before-a :global-before-b
-                   :state-before-a :state-before-b
-                   :state-after-a :state-after-b
-                   :global-after-a :global-after-b)
-                 (loop :for i :in records
-                       :collect (id-append-item-id i))))
-      (loop :for i :in records
-                   :do (is (equal (list foobar)
-                                  (id-append-item-args i)))))))
+  (with-state-transition-recorder
+      (records make-hook)
+      (let* ((sm (state-machine-example-01
+                  :global-before-hooks
+                  (list (make-hook :global-before-a t)
+                        (make-hook :global-before-b t))
+                  :global-after-hooks
+                  (list (make-hook :global-after-a t)
+                        (make-hook :global-after-b t))
+                  :state-before-hooks
+                  (list (make-hook :state-before-a t)
+                        (make-hook :state-before-b t))
+                  :state-after-hooks
+                  (list (make-hook :state-after-a t)
+                        (make-hook :state-after-b t))))
+             (passing-args (gensym)))
+        (is (eq (current-state sm) :at-home))
+        (let ((state-def (trigger! sm :meditate passing-args)))
+          (is (and (eq (current-state sm) :nirvana)
+                   (eq (current-state sm) (state state-def)))))
+        (is (equal '(:global-before-a :global-before-b
+                     :state-before-a :state-before-b
+                     :state-after-a :state-after-b
+                     :global-after-a :global-after-b)
+                   (mapcar #'state-transition-record-id records)))
+        (is-true (every #'(lambda (i) (equal (list passing-args)
+                                             (state-transition-record-args i)))
+                        records)))))
+;; TODO: check `state-transition-transition-definition' of `state-transition-record-state-transition'
+#|
+        (loop :for i :in records
+              :for a-state-transition := (state-transition-record-state-transition i)
+              :do (is-true (and (eq (state-transition-state-machine a-state-transition)
+                                    sm)
+                                (equal (state-transition-args a-state-transition)
+                                       (list passing-args)))))
+|#
 
+(test trigger!-global-before-hook-rejection
+  (with-state-transition-recorder
+      (records make-hook)
+      (let* ((sm (state-machine-example-01
+                  :global-before-hooks
+                  (list (make-hook :global-before-a t)
+                        (make-hook :global-before-b nil)) ; <-- the guy
+                  :global-after-hooks
+                  (list (make-hook :global-after-a t))
+                  :state-before-hooks
+                  (list (make-hook :state-before-a t))
+                  :state-after-hooks
+                  (list (make-hook :state-after-a t))))
+             (passing-args (gensym)))
+        (is (eq (current-state sm) :at-home))
+        (signals simple-error (trigger! sm :meditate passing-args))
+        (is (eq (current-state sm) :at-home)) ; not changed
+        (is (equal '(:global-before-a :global-before-b) ; no `global-after', `state-*'
+                   (mapcar #'state-transition-record-id records)))
+        (is-true (every #'(lambda (i) (equal (list passing-args)
+                                             (state-transition-record-args i)))
+                        records)))))
 
-
-;; TODO can `state-machine'-level `before-hooks' reject?
-;; TODO can `state-definition'-level `before-hooks' reject?
+(test trigger!-state-before-hook-rejection
+  (with-state-transition-recorder
+      (records make-hook)
+      (let* ((sm (state-machine-example-01
+                  :global-before-hooks
+                  (list (make-hook :global-before-a t)
+                        (make-hook :global-before-b t))
+                  :global-after-hooks
+                  (list (make-hook :global-after-a t))
+                  :state-before-hooks
+                  (list (make-hook :state-before-a t)
+                        (make-hook :state-before-b nil)) ; <-- the guy
+                  :state-after-hooks
+                  (list (make-hook :state-after-a t))))
+             (passing-args (gensym)))
+        (is (eq (current-state sm) :at-home))
+        (signals simple-error (trigger! sm :meditate passing-args))
+        (is (eq (current-state sm) :at-home)) ; not changed
+        (is (equal '(:global-before-a :global-before-b :state-before-a :state-before-b)
+                   (mapcar #'state-transition-record-id records)))
+        (is-true (every #'(lambda (i) (equal (list passing-args)
+                                             (state-transition-record-args i)))
+                        records)))))
 
 
 
