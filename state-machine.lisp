@@ -696,11 +696,18 @@ list of `state-definition' instances"
     (append-item-f l :a)
     (is (equal '(:a) l))))
 
-(defstruct state-transition-record state-transition id args
-           (:documentation "TODO"))
+(defstruct state-transition-record state-transition id
+           (:documentation "For testing purpose. Hold arguments passed
+           to hook function. Use `id' slot to identify a hook
+           function."))
 
-(defmacro make-state-transition-record-appender (list-place id retval)
-  "TODO"
+(defmacro make-state-transition-record-appender (list-place a-state-transition-record-id retval)
+  "Make new hook function evaluates as `retval'.
+
+Append new `state-transition-record' at the end of `list-place'.
+
+Specify `id' slot as an identifier of new hook function. It will be
+matched with `id'-slot of corresponding `state-transition-record'."
   (let ((args# (gensym))
         (item# (gensym)))
     `#'(lambda (a-state-transition &rest rest-args)
@@ -708,13 +715,19 @@ list of `state-definition' instances"
          (let* ((,args# (state-transition-args a-state-transition))
                 (,item# (make-state-transition-record
                          :state-transition a-state-transition
-                         :id ,id
-                         :args ,args#)))
+                         :id ,a-state-transition-record-id)))
            (append-item-f ,list-place ,item#))
          ,retval)))
 
 (defmacro with-state-transition-recorder ((records-name appender-maker-name) &rest body)
-  "TODO"
+  "Will evaluate `body' within an established bindings of
+`records-name' and `appender-maker-name'.
+
+`appender-maker-name' is a function which takes `(id ret-val)' as
+parameter and returns new hook function by
+`make-state-transition-record-appender'. `id' and `ret-val' is pass
+through to `make-state-transition-record-appender'. And `records-name'
+will be the first `list-place' parameter of it."
   `(let ((,records-name '()))
      (flet ((,appender-maker-name (id ret-val)
               (make-state-transition-record-appender ,records-name id ret-val)))
@@ -830,17 +843,23 @@ list of `state-definition' instances"
                      :global-after-a :global-after-b)
                    (mapcar #'state-transition-record-id records)))
         (is-true (every #'(lambda (i) (equal (list passing-args)
-                                             (state-transition-record-args i)))
-                        records)))))
-;; TODO: check `state-transition-transition-definition' of `state-transition-record-state-transition'
-#|
-        (loop :for i :in records
+                                             (state-transition-args
+                                              (state-transition-record-state-transition i))))
+                        records))
+        ;; check `state-transition-transition-definition' of `state-transition-record-state-transition'
+        (loop :with expect-transition-event := :meditate
+              :with expect-transition-to := :nirvana
+              :with expect-transition-from := :at-home
+              :for i :in records
               :for a-state-transition := (state-transition-record-state-transition i)
-              :do (is-true (and (eq (state-transition-state-machine a-state-transition)
-                                    sm)
-                                (equal (state-transition-args a-state-transition)
-                                       (list passing-args)))))
-|#
+              :for a-transition-definition := (state-transition-transition-definition
+                                               a-state-transition)
+              :do (is-true (and (eq (event a-transition-definition)
+                                    expect-transition-event)
+                                (eq (from-state a-transition-definition)
+                                    expect-transition-from)
+                                (eq (to-state a-transition-definition)
+                                    expect-transition-to)))))))
 
 (test trigger!-global-before-hook-rejection
   (with-state-transition-recorder
@@ -862,7 +881,8 @@ list of `state-definition' instances"
         (is (equal '(:global-before-a :global-before-b) ; no `global-after', `state-*'
                    (mapcar #'state-transition-record-id records)))
         (is-true (every #'(lambda (i) (equal (list passing-args)
-                                             (state-transition-record-args i)))
+                                             (state-transition-args
+                                              (state-transition-record-state-transition i))))
                         records)))))
 
 (test trigger!-state-before-hook-rejection
@@ -886,7 +906,8 @@ list of `state-definition' instances"
         (is (equal '(:global-before-a :global-before-b :state-before-a :state-before-b)
                    (mapcar #'state-transition-record-id records)))
         (is-true (every #'(lambda (i) (equal (list passing-args)
-                                             (state-transition-record-args i)))
+                                             (state-transition-args
+                                              (state-transition-record-state-transition i))))
                         records)))))
 
 
