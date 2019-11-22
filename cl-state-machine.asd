@@ -7,7 +7,19 @@
                 :serial t
                 :components
                 ((:file "package")
-                 (:file "main"))))
+                 (:file "utils")
+                 (:file "type-pred")
+                 (:file "hook-types")
+                 (:file "state-definition")
+                 (:file "transition-definition")
+                 (:file "state-machine")
+                 (:file "state-machine-init")
+                 (:file "state-transition")
+                 (:file "call-hook")
+                 (:file "builder")
+                 (:file "finders+preds")
+                 (:file "jump+trigger")
+                 )))
   :description "Finite state machine"
   :long-description
   #.(read-file-string

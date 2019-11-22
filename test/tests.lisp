@@ -33,18 +33,6 @@
   (is-false (typep (list 123) 'cl-state-machine::symbol-list))
   (is-false (typep "foobar" 'cl-state-machine::symbol-list)))
 
-(test adjoinf
-  (let ((s '()))
-    (cl-state-machine::adjoinf s :a)
-    (cl-state-machine::adjoinf s :a)
-    (is-false (zerop (length s)))
-    (is (= 1 (length s)))
-    (cl-state-machine::adjoinf s :a)
-    (cl-state-machine::adjoinf s :b)
-    (is (= 2 (length s)))
-    (is-true (and (member :a s)
-                  (member :b s)))))
-
 
 (test state-definitions-of
   (let* ((state-defs (state-definitions-of
