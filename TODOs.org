@@ -1,4 +1,4 @@
-* TODO initial release [4/7]
+* TODO initial release [4/8]
 ** DONE test / ~trigger!~
    CLOSED: [2019-11-22 Fri 10:44]
 ** DONE ~asdf~-ize, reorg files/packages
@@ -11,6 +11,7 @@
    CLOSED: [2019-11-22 Fri 19:37]
 
 ** TODO before-hook rejection reason? ..as before-hook function returned value
+** TODO ecl support?
 ** TODO examples/text-adventure
 
 ** TODO README / example / API-docs / License / Contact / Support
