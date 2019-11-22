@@ -47,13 +47,13 @@
                         (make-hook :state-after-b t))))
              (passing-args (gensym)))
         (is (eq (current-state sm) :at-home))
-        (multiple-value-bind (state-def rejected? rejection-reason)
+        (multiple-value-bind (new-state rejected? rejection-reason)
             (trigger! sm :meditate passing-args)
           ;;
           (is-false rejected?)
           (is-false rejection-reason)
           (is (and (eq (current-state sm) :nirvana)
-                   (eq (current-state sm) (state state-def)))))
+                   (eq (current-state sm) new-state))))
         (is (equal '(:global-before-a :global-before-b
                      :state-before-a :state-before-b
                      :state-after-a :state-after-b

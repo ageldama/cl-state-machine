@@ -5,6 +5,8 @@
   "Set `current-state' of `a-state-machine' without invoking hook
 functions and any constraints check.
 
+Evaluate as a symbol denotes new `state'.
+
 Signal `simple-error' when specified `state' is cannot be found in
 `a-state-machine'."
   (declare (type state-machine a-state-machine)
@@ -19,16 +21,17 @@ Signal `simple-error' when specified `state' is cannot be found in
 (defun trigger! (a-state-machine event &rest args)
    "Trigger the `event' on given `a-state-machine'.
 
-Evaluation values are: `(values A-STATE-DEFINITION REJECTED? REJECTION-REASON)'
+Evaluation values are: `(values A-STATE-SYMBOL REJECTED? REJECTION-REASON)'
 
-On success, `A-STATE-DEFINITION' is corresponding `state-definition'
-of triggered state and `REJECTED?', `REJECTION-REASON' are `nil'.
+On success, `A-STATE-SYMBOL' is a symbol of corresponding state
+definition of new state and `REJECTED?', `REJECTION-REASON' are `nil'.
 
-If `state-machine' has terminated or the specified `event' cannot be
+If `a-state-machine' has terminated or the specified `event' cannot be
 triggered on current state, `REJECTED?' is `:CANNOT-BE-TRIGGERED' and
-`REJECTION-REASON' is the specified `event' parameter.
+`REJECTION-REASON' is the specified `event' parameter. And
+`A-STATE-SYMBOL' is `nil'.
 
-If `state-machine' in illegal current state, will signal
+If `a-state-machine' in illegal current state, will signal
 `simple-error'.
 
 Rest arguments `args' will be passed to the `before-hooks' and
@@ -41,8 +44,8 @@ global-before -> state-before -> state-after -> global-after.
 
 If any function of `before-hooks' in `a-state-machine' or the
 corresponding `state-definition' has evaluated as false value, the
-transition will be rejected, `A-STATE-DEFINITION' is `nil',
-`REJECTED?' is one of `:STATE-MACHINE-BEFORE-HOOK-REJECTED' or
+transition will be rejected, `A-STATE-SYMBOL' is `nil', `REJECTED?' is
+one of `:STATE-MACHINE-BEFORE-HOOK-REJECTED' or
 `:STATE-DEFINITION-BEFORE-HOOK-REJECTED', and `REJECTION-REASON' is
 the hook function value that evaluated as false.
 
@@ -95,4 +98,5 @@ corresponding `state-definition' as well."
     ;; and `call-after-hooks's
     (call-after-hooks (after-hooks state-def) a-state-transition)
     (call-after-hooks (after-hooks a-state-machine) a-state-transition)
-    state-def))
+    ;; return
+    (values next-state nil nil)))
