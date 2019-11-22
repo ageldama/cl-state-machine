@@ -27,6 +27,8 @@
                        :event :home->work)
                       `(:from :at-home :to :in-bed
                         :event :home->bed)
+                      `(:from :in-bed :to :at-home
+                        :event :wake-up)
                       `(:from :at-home :to :nirvana
                         :event :meditate)
                       `(:from :at-work :to :at-home
