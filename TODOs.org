@@ -1,5 +1,6 @@
-* TODO initial release [0/5]
-** TODO test / ~trigger!~
+* TODO initial release [1/5]
+** DONE test / ~trigger!~
+   CLOSED: [2019-11-22 Fri 10:44]
 ** TODO ~asdf~-ize, reorg files/packages
 ** TODO graphviz integration
 ** TODO examples/text-adventure
