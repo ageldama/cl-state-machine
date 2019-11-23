@@ -8,6 +8,7 @@
                 :components
                 ((:file "package")
                  (:file "utils")
+                 (:file "conditions")
                  (:file "type-pred")
                  (:file "hook-types")
                  (:file "state-definition")

@@ -11,7 +11,7 @@
 (test terminated?
   (is-false (terminated? (state-machine-example--started)))
   (is-true (terminated? (state-machine-example--terminated)))
-  (signals simple-error (terminated? (state-machine-example--wrong-current))))
+  (signals state-machine-error (terminated? (state-machine-example--wrong-current))))
 
 (test find-transition-definition-by-state-and-event
   (let ((sm (state-machine-example-01)))
@@ -34,7 +34,7 @@
                       (possible-events (state-machine-example-01))))
   (is-true (set-equal '(:a->b) (possible-events (state-machine-example--started))))
   (is-true (set-equal '() (possible-events (state-machine-example--terminated))))
-  (signals simple-error (possible-events (state-machine-example--wrong-current))))
+  (signals state-machine-error (possible-events (state-machine-example--wrong-current))))
 
 (test can?
   (let ((sm (state-machine-example-01)))
@@ -51,4 +51,4 @@
     (is-false (can? sm :work->home))))
 
 (test can?-3
-  (signals simple-error (can? (state-machine-example--wrong-current) :sth)))
+  (signals state-machine-error (can? (state-machine-example--wrong-current) :sth)))

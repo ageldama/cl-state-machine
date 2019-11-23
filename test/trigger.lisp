@@ -25,7 +25,7 @@
     (is (eq :a->b rejection-reason))))
 
 (test trigger!-illegal-current-state
-  (signals simple-error (trigger! (state-machine-example--wrong-current)  :a->b)))
+  (signals state-machine-error (trigger! (state-machine-example--wrong-current)  :a->b)))
 
 
 

@@ -18,13 +18,17 @@ Evaluated as `nil' if it cannot be found."
   "True if `a-state-machine' has reached to a `state-definition' which
 marked as `terminal' = true.
 
-Can signal `simple-error' on `a-state-machine' with illegal current
+Can signal `state-machine-error' on `a-state-machine' with illegal current
 state."
   (declare (type state-machine a-state-machine))
   (let* ((cur (current-state a-state-machine))
          (cur-state-def (find-state-definition-by-state a-state-machine cur)))
-    (assert (not (null cur)))
-    (assert (not (null cur-state-def)))
+    (when (null cur)
+      (error 'state-machine-error
+             :format-string "Current state of state-machine is nil, it shouldn't!"))
+    (when (null cur-state-def)
+      (error 'state-machine-error
+             :format-string "State definition of current state is nil"))
     (terminal cur-state-def)))
 
 (defun possible-events (a-state-machine)
@@ -34,7 +38,7 @@ state."
 Return a list of symbols and it can be empty if there's no other
 possible event or the state machine has terminated.
 
-Signal `simple-error' on `a-state-machine' of illegal current state."
+Signal `state-machine-error' on `a-state-machine' of illegal current state."
   (declare (type state-machine a-state-machine))
   (when (terminated? a-state-machine)
     (return-from possible-events '()))
@@ -49,7 +53,7 @@ Signal `simple-error' on `a-state-machine' of illegal current state."
 `event'. If `a-state-machine` has been terminated, it will be
 evaluated as false as well.
 
-Signal `simple-error' on `a-state-machine' of illegal current state."
+Signal `state-machine-error' on `a-state-machine' of illegal current state."
   (declare (type state-machine a-state-machine)
            (type symbol event))
   (member event (possible-events a-state-machine)))

@@ -10,6 +10,8 @@
    :before-hook-function
    :after-hook-function
 
+   :state-machine-error
+
    ;; `state-definition'
    :state-definition
 

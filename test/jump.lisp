@@ -18,5 +18,5 @@
         (is (eq (current-state sm) :being-rich))
         (is (= 0 (length records))) ; should not evaluate any hook
         ;; FAIL
-        (signals simple-error (jump! sm :a))
+        (signals state-machine-error (jump! sm :a))
         (is (= 0 (length records)))))) ; should not evaluate any hook

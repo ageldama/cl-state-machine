@@ -7,14 +7,16 @@ functions and any constraints check.
 
 Evaluate as a symbol denotes new `state'.
 
-Signal `simple-error' when specified `state' is cannot be found in
+Signal `state-machine-error' when specified `state' is cannot be found in
 `a-state-machine'."
   (declare (type state-machine a-state-machine)
            (type symbol state))
   (with-slots (current-state %state-definition-by-state) a-state-machine
     (multiple-value-bind (state-def present?) (gethash state %state-definition-by-state)
       (declare (ignore state-def))
-      (unless present? (error "Cannot `jump!' to (~a) (Undefined state)" state))
+      (unless present? (error 'state-machine-error
+                              :format-string "Cannot `jump!' to (~a) (Undefined state)"
+                              :format-arguments (list state)))
       (setf current-state state))))
 
 
@@ -32,7 +34,7 @@ triggered on current state, `REJECTED?' is `:CANNOT-BE-TRIGGERED' and
 `A-STATE-SYMBOL' is `nil'.
 
 If `a-state-machine' in illegal current state, will signal
-`simple-error'.
+`state-machine-error'.
 
 Rest arguments `args' will be passed to the `before-hooks' and
 `after-hooks' in `a-state-machine' and its' corresponding
@@ -63,15 +65,19 @@ corresponding `state-definition' as well."
                                                           cur-state
                                                           event))
          (transition-def-nil? (unless transition-def
-                                (error "`transition-definition' cannot be found by state/event (~a, ~a) in `state-machine' (~a)"
-                                       cur-state event a-state-machine)))
+                                (error 'state-machine-error
+                                       :format-string
+                                       "`transition-definition' cannot be found by state/event (~a, ~a) in `state-machine' (~a)"
+                                       :format-arguments (list cur-state event a-state-machine))))
          (next-state (to-state transition-def))
          ;; find `state-definition'
          (state-def (find-state-definition-by-state
                      a-state-machine next-state))
          (state-def-nil? (unless state-def
-                           (error "`state-definition' for state (~a) in `state-machine' (~a) cannot be found"
-                                  next-state a-state-machine)))
+                           (error 'state-machine-error
+                                  :format-string
+                                  "`state-definition' for state (~a) in `state-machine' (~a) cannot be found"
+                                  :format-arguments (list next-state a-state-machine))))
          ;; build `state-transition'
          (a-state-transition (make-state-transition :state-machine a-state-machine
                                                     :transition-definition transition-def
