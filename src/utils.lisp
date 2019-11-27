@@ -30,35 +30,47 @@ If `include-nil-val?' is false, skip appending."
 (defmacro loop-over-plist (plist kv-names &rest body)
   "Example:
 
-> (loop-over-plist '(:a 1 :b 2) (k v)
+> (loop-over-plist '(:a 1
+>                    :b 2
+>                    :c nil
+>                    nil 4
+>                    :e) (k v)
 >  (format t \"~a => ~a~%\" k v))
 
 Will print:
-  :A => 1
-  :B => 2
+  A => 1
+  B => 2
+  C => NIL
+  NIL => 4
+  E => NIL
 
 And evaluate as `nil'."
-  (let ((plist*# (gensym))
-        (k# (gensym))
+  (let ((k# (gensym))
         (v# (gensym)))
     `(let ((,(car kv-names) nil)
            (,(cadr kv-names) nil))
-       (loop :with ,plist*# := ,plist
-             :for ,k# := (car ,plist*#)
-             :for ,v# := (cadr ,plist*#)
-             :do (if (null ,k#) (return nil)
-                     (progn (psetf ,(car kv-names) ,k#
-                                   ,(cadr kv-names) ,v#)
-                            ,@body
-                            (setf ,plist*# (cddr ,plist*#))))))))
+       (loop :for idx :from 0 :below (length ,plist) :by 2
+             :for ,k# := (nth idx ,plist)
+             :for ,v# := (nth (1+ idx) ,plist)
+             :do (progn (psetf ,(car kv-names) ,k#
+                               ,(cadr kv-names) ,v#)
+                            ,@body)))))
 
+
+
+(defun plist-copy (include-nil-val? a-plist)
+  (let ((result '()))
+    (loop-over-plist a-plist (k v)
+                     (if include-nil-val?
+                         (setf (getf result k) v)
+                         (when v (setf (getf result k) v))))
+    result))
 
 (defun plist-merge (include-nil-val?
                     &rest plists)
-  "Merge multiple plists into one plist
-TODO"
+  "Merge multiple plists into one plist."
   (unless plists (return-from plist-merge nil))
-  (let ((plist* (copy-list (car plists))))
+  (let ((plist* (plist-copy include-nil-val? (car plists))))
     (loop :for another-plist :in (cdr plists)
           :do (loop-over-plist another-plist (k v)
                                (plist-append-f plist* k v

@@ -24,10 +24,15 @@
                (apply #'format (append (list stream format-string)
                                        format-arguments))))))
 
-(defun reject-transision! (&key (datum nil)
+(defun reject-transition! (&key (datum nil)
                              (format-string nil)
                              (format-arguments nil))
   "Signal `reject-transition' condition"
-  (error 'reject-transition ))
+  (apply #'error (append '(reject-transition)
+                         (plist-merge nil
+                                      `(:datum ,datum)
+                                      `(:format-string ,format-string)
+                                      `(:format-arguments ,format-arguments)))))
+
 
 

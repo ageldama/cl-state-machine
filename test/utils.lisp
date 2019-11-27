@@ -78,19 +78,26 @@
 
 
 (test loop-over-plist
-  (let ((l '(:a 1 :b 2 :c))
+  (let ((l '(:a 1 :b 2 :c nil nil 4 :e))
         (collected '(:a 42)))
     (cl-state-machine::loop-over-plist l (k v)
-                                       (when (and k v)
-                                         (setf (getf collected k) v)))
-    (is (plist-equal? '(:a 1 :b 2) collected))
-    (is (equal '(:a 1 :b 2 :c) l))
+                                       (setf (getf collected k) v))
+    (is (plist-equal? '(:a 1 :b 2 :c nil nil 4 :e nil) collected))
+    (is (equal '(:a 1 :b 2 :c nil nil 4 :e) l))
     ;;
     (setf collected '())
     (cl-state-machine::loop-over-plist '() (k v)
                                        (when (and k v)
                                          (setf (getf collected k) v)))
     (is (equal '() collected))))
+
+(test plist-copy
+  (is (plist-equal? '()
+                    (cl-state-machine::plist-copy t nil)))
+  (is (plist-equal? '(nil nil :a nil)
+                    (cl-state-machine::plist-copy t '(nil nil :a))))
+  (is (plist-equal? '(:a nil :b 2)
+                    (cl-state-machine::plist-copy t '(:a nil :b 2)))))
 
 
 (test plist-merge
@@ -112,3 +119,11 @@
                         :투명드래곤 nil :apple :green)
                       ;; NOTE: forget to specify `when-val?' positional arg.
                       (cl-state-machine::plist-merge plist-a plist-nil plist-b plist-c)))))
+
+(test plist-merge-1st-entry-nil-val
+  (is (plist-equal? '(:a nil :b 2 :c 3 :d nil)
+                    (cl-state-machine::plist-merge t '(:a nil :d) '(:b 2) '(:c 3))))
+  (is (plist-equal? '(:b 2 :c 3)
+                    (cl-state-machine::plist-merge nil '(:a nil :d) '(:b 2) '(:c 3)))))
+
+
