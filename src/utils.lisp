@@ -15,34 +15,29 @@
   `(setf ,place (append ,place ,@lists)))
 
 
-(defmacro plist-append-f (place key val &key (when-val-ok? t))
+(defmacro plist-append-f (place key val &key (include-nil-val? t))
   "Append `key' and `value' to `place' the property list.
 
 It is a modifying macro.
 
-Append even `val' is a false value when `when-val-ok?' is specified as
-false value. (default: `when-val-ok?' = true, do not append false
-`val' value)"
-  `(append-f ,place
-             (if ,when-val-ok? (when ,val (list ,key ,val))
-                 (list ,key ,val))))
-
-
-(defun hash-table-equal? (ht-a ht-b) ; TODO: keyset-test, each-value-test, key-compare
-  (flet ((hash-table-sorted-keys (ht)
-           (sort (alexandria:hash-table-keys ht) #'string<)))
-    (let ((keys-a (hash-table-sorted-keys ht-a))
-          (keys-b (hash-table-sorted-keys ht-b)))
-      (unless (equal keys-a keys-b)
-        (return-from hash-table-equal? nil))
-      (loop :for k :being :the :hash-keys :of ht-a
-            :unless (equal (gethash k ht-a)
-                           (gethash k ht-b))
-              :do (return-from hash-table-equal? nil)))
-    t))
+If `include-nil-val?' is false, skip appending."
+  `(if ,include-nil-val?
+       (setf (getf ,place ,key) ,val)
+       (when ,val
+         (setf (getf ,place ,key) ,val))))
 
 
 (defmacro loop-over-plist (plist kv-names &rest body)
+  "Example:
+
+> (loop-over-plist '(:a 1 :b 2) (k v)
+>  (format t \"~a => ~a~%\" k v))
+
+Will print:
+  :A => 1
+  :B => 2
+
+And evaluate as `nil'."
   (let ((plist*# (gensym))
         (k# (gensym))
         (v# (gensym)))
@@ -58,18 +53,15 @@ false value. (default: `when-val-ok?' = true, do not append false
                             (setf ,plist*# (cddr ,plist*#))))))))
 
 
-(defun plist-merge (when-val-ok?
+(defun plist-merge (include-nil-val?
                     &rest plists)
   "Merge multiple plists into one plist
 TODO"
   (unless plists (return-from plist-merge nil))
   (let ((plist* (copy-list (car plists))))
     (loop :for another-plist :in (cdr plists)
-          :do (progn (assert (evenp (length another-plist)))
-                     (loop :for idx :from 0 :below (length another-plist) :by 2
-                           :for k := (elt another-plist idx)
-                           :for v := (elt another-plist (1+ idx))
-                           :do (plist-append-f plist* k v
-                                               :when-val-ok? when-val-ok?))))
+          :do (loop-over-plist another-plist (k v)
+                               (plist-append-f plist* k v
+                                               :include-nil-val? include-nil-val?)))
     plist*))
 
