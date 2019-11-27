@@ -12,6 +12,8 @@
 
    :state-machine-error
 
+   :reject-transition!
+
    ;; `state-definition'
    :state-definition
 
