@@ -27,6 +27,21 @@ false value. (default: `when-val-ok?' = true, do not append false
              (if ,when-val-ok? (when ,val (list ,key ,val))
                  (list ,key ,val))))
 
+
+(defun hash-table-equal? (ht-a ht-b) ; TODO: keyset-test, each-value-test, key-compare
+  (flet ((hash-table-sorted-keys (ht)
+           (sort (alexandria:hash-table-keys ht) #'string<)))
+    (let ((keys-a (hash-table-sorted-keys ht-a))
+          (keys-b (hash-table-sorted-keys ht-b)))
+      (unless (equal keys-a keys-b)
+        (return-from hash-table-equal? nil))
+      (loop :for k :being :the :hash-keys :of ht-a
+            :unless (equal (gethash k ht-a)
+                           (gethash k ht-b))
+              :do (return-from hash-table-equal? nil)))
+    t))
+
+
 (defmacro loop-over-plist (plist kv-names &rest body)
   (let ((plist*# (gensym))
         (k# (gensym))

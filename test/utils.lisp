@@ -43,6 +43,7 @@
     (cl-state-machine::plist-append-f l :apple :red)
     (is (equal l '(:apple :red)))))
 
+;; TODO: hash-table-equal?
 
 (test loop-over-plist
   (let ((l '(:a 1 :b 2 :c))
@@ -50,9 +51,15 @@
     (cl-state-machine::loop-over-plist l (k v)
                                        (when (and k v)
                                          (setf (getf collected k) v)))
-    (is (equal (alexandria:plist-hash-table '(:a 1 :b 2))
-               (alexandria:plist-hash-table collected)))
-    (is (equal '(:a 1 :b 2 :c) l))))
+    (is (cl-state-machine::hash-table-equal? (alexandria:plist-hash-table '(:a 1 :b 2))
+                                             (alexandria:plist-hash-table collected)))
+    (is (equal '(:a 1 :b 2 :c) l))
+    ;;
+    (setf collected '())
+    (cl-state-machine::loop-over-plist '() (k v)
+                                       (when (and k v)
+                                         (setf (getf collected k) v)))
+    (is (equal '() collected))))
 
 
 (test plist-merge
