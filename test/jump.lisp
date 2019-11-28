@@ -9,6 +9,7 @@
   (with-state-transition-recorder
       (records make-hook)
       (let ((sm (state-machine-example-01
+                 ;; these hooks should never be evaluated!
                  :global-before-hooks (list (make-hook :global-before t))
                  :global-after-hooks (list (make-hook :global-after t))
                  :state-before-hooks (list (make-hook :state-before t))

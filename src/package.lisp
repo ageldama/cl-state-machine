@@ -12,6 +12,7 @@
 
    :state-machine-error
 
+   :reject-transition
    :reject-transition!
 
    ;; `state-definition'
@@ -30,6 +31,7 @@
 
    :call-before-hooks
    :call-after-hooks
+   :call-before-hooks*
 
    ;; `transition-definition'
    :transition-definition

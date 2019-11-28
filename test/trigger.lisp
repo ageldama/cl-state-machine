@@ -34,17 +34,17 @@
       (records make-hook)
       (let* ((sm (state-machine-example-01
                   :global-before-hooks
-                  (list (make-hook :global-before-a t)
-                        (make-hook :global-before-b t))
+                  (list (make-hook :global-before-a)
+                        (make-hook :global-before-b))
                   :global-after-hooks
-                  (list (make-hook :global-after-a t)
-                        (make-hook :global-after-b t))
+                  (list (make-hook :global-after-a)
+                        (make-hook :global-after-b))
                   :state-before-hooks
-                  (list (make-hook :state-before-a t)
-                        (make-hook :state-before-b t))
+                  (list (make-hook :state-before-a)
+                        (make-hook :state-before-b))
                   :state-after-hooks
-                  (list (make-hook :state-after-a t)
-                        (make-hook :state-after-b t))))
+                  (list (make-hook :state-after-a)
+                        (make-hook :state-after-b))))
              (passing-args (gensym)))
         (is (eq (current-state sm) :at-home))
         (multiple-value-bind (new-state rejected? rejection-reason)
@@ -81,17 +81,17 @@
 (test trigger!-global-before-hook-rejection
   (with-state-transition-recorder
       (records make-hook)
-      (let* ((bad-boy (make-hook :global-before-b nil))
+      (let* ((bad-boy (make-hook :global-before-b t))
              (sm (state-machine-example-01
                   :global-before-hooks
-                  (list (make-hook :global-before-a t)
+                  (list (make-hook :global-before-a)
                         bad-boy) ; <-- the guy
                   :global-after-hooks
-                  (list (make-hook :global-after-a t))
+                  (list (make-hook :global-after-a))
                   :state-before-hooks
-                  (list (make-hook :state-before-a t))
+                  (list (make-hook :state-before-a))
                   :state-after-hooks
-                  (list (make-hook :state-after-a t))))
+                  (list (make-hook :state-after-a))))
              (passing-args (gensym)))
         (is (eq (current-state sm) :at-home))
         (multiple-value-bind (next-state-def rejected? rejection-reason)
@@ -99,7 +99,7 @@
           (declare (ignore next-state-def))
           ;;
           (is (eq :state-machine-before-hook-rejected rejected?))
-          (is (eq bad-boy rejection-reason))
+          (is (equal (cons bad-boy :global-before-b) rejection-reason))
           (is (eq (current-state sm) :at-home)) ; not changed
           (is (equal '(:global-before-a :global-before-b) ; no `global-after', `state-*'
                      (mapcar #'state-transition-record-id records)))
@@ -111,15 +111,15 @@
 (test trigger!-state-before-hook-rejection
   (with-state-transition-recorder
       (records make-hook)
-      (let* ((bad-boy (make-hook :state-before-b nil))
+      (let* ((bad-boy (make-hook :state-before-b t))
                (sm (state-machine-example-01
                   :global-before-hooks
-                  (list (make-hook :global-before-a t)
-                        (make-hook :global-before-b t))
+                  (list (make-hook :global-before-a)
+                        (make-hook :global-before-b))
                   :global-after-hooks
-                  (list (make-hook :global-after-a t))
+                  (list (make-hook :global-after-a))
                   :state-before-hooks
-                  (list (make-hook :state-before-a t)
+                  (list (make-hook :state-before-a)
                         bad-boy) ; <-- the guy
                   :state-after-hooks
                   (list (make-hook :state-after-a t))))
@@ -130,7 +130,7 @@
           (declare (ignore next-state-def))
           ;;
           (is (eq :state-definition-before-hook-rejected rejected?))
-          (is (eq bad-boy rejection-reason))
+          (is (equal (cons bad-boy :state-before-b) rejection-reason))
           (is (eq (current-state sm) :at-home)) ; not changed
           (is (equal '(:global-before-a :global-before-b :state-before-a :state-before-b)
                      (mapcar #'state-transition-record-id records)))

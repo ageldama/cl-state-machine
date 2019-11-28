@@ -12,7 +12,7 @@
     :initarg :terminal :initform nil :type boolean :reader terminal
     :documentation "Mark it as terminal state.")
    (before-hooks
-    :initarg :before-hooks :initform (list #'always-t) :type function-list :accessor before-hooks
+    :initarg :before-hooks :initform (list #'always-nil) :type function-list :accessor before-hooks
     :documentation "List of `before-hook-function's.
 
  Will be evaluated sequentially before trainsition of the state of

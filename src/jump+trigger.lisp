@@ -2,8 +2,8 @@
 
 
 (defun jump! (a-state-machine state)
-  "Set `current-state' of `a-state-machine' without invoking hook
-functions and any constraints check.
+  "Set `current-state' of `a-state-machine' without hook
+function evaluation and constraints check.
 
 Evaluate as a symbol denotes new `state'.
 
@@ -25,35 +25,46 @@ Signal `state-machine-error' when specified `state' is cannot be found in
 
 Evaluation values are: `(values A-STATE-SYMBOL REJECTED? REJECTION-REASON)'
 
-On success, `A-STATE-SYMBOL' is a symbol of corresponding state
-definition of new state and `REJECTED?', `REJECTION-REASON' are `nil'.
+* on Success:
+  - `A-STATE-SYMBOL' is a symbol of corresponding state definition
+     of the new state.
+  - and `REJECTED?', `REJECTION-REASON' both is `nil'.
 
-If `a-state-machine' has terminated or the specified `event' cannot be
-triggered on current state, `REJECTED?' is `:CANNOT-BE-TRIGGERED' and
-`REJECTION-REASON' is the specified `event' parameter. And
-`A-STATE-SYMBOL' is `nil'.
+* if `a-state-machine' has terminated or the specified `event'
+  cannot be triggered from current state:
+  - `A-STATE-SYMBOL' is nil.
+  - `REJECTED?' is `:CANNOT-BE-TRIGGERED'
+    and `REJECTION-REASON' is the specified `event' parameter.
 
-If `a-state-machine' in illegal current state, will signal
-`state-machine-error'.
+* if `a-state-machine' is in illegal state:
+  - will signal `state-machine-error'.
 
-Rest arguments `args' will be passed to the `before-hooks' and
-`after-hooks' in `a-state-machine' and its' corresponding
-`state-definition''s as well.
+* and any hook function could reject the transition. (read following paragraphs)
 
-The hook functions will be evaluated when the before and the after of
-state transition. The order of hook functions evaluation is:
-global-before -> state-before -> state-after -> global-after.
+Rest arguments `args' will be passed to the `before-hooks' and `after-hooks'
+registered in `a-state-machine' and its' corresponding `state-definition''s.
 
-If any function of `before-hooks' in `a-state-machine' or the
-corresponding `state-definition' has evaluated as false value, the
-transition will be rejected, `A-STATE-SYMBOL' is `nil', `REJECTED?' is
-one of `:STATE-MACHINE-BEFORE-HOOK-REJECTED' or
-`:STATE-DEFINITION-BEFORE-HOOK-REJECTED', and `REJECTION-REASON' is
-the hook function value that evaluated as false.
+The hook functions will be evaluated on state transition.
+The evaluation order of hook functions are:
 
-And such rejection will suppress the consequent evaluation of
-`before-hooks' and `after-hooks' in `a-state-machine' and the
-corresponding `state-definition' as well."
+  (1) global-before
+  (2) per-state-before
+  (3) per-state-after
+  (4) global-after
+
+Any global-before or per-state-before hook function could reject the
+transition by invoking `reject-transition!'. In this case, any
+subsequent hook function evaluation will be stopped and the function's
+evaluated values are:
+
+  - `A-STATE-SYMBOL' is `nil',
+  - `REJECTED?' is one of
+    `:STATE-MACHINE-BEFORE-HOOK-REJECTED' or
+    `:STATE-DEFINITION-BEFORE-HOOK-REJECTED'.
+  - `REJECTION-REASON' is a cons cell of `(DATUM . REJECTED-HOOk-FUNCTION-VALUE)'
+    where `DATUM' is the value the hook function passed as `:datum' key parameter to
+    `reject-transition!'.
+"
   (declare (type state-machine a-state-machine)
            (type symbol event))
   (unless (can? a-state-machine event)
@@ -85,16 +96,16 @@ corresponding `state-definition' as well."
     (declare (ignore transition-def-nil? state-def-nil?))
     ;; check `before-hooks' of `a-state-machine'
     (let ((state-machine-before-hooks-result
-            (call-before-hooks (before-hooks a-state-machine)
-                               a-state-transition)))
+            (call-before-hooks* (before-hooks a-state-machine)
+                                a-state-transition)))
       (when state-machine-before-hooks-result
         (return-from trigger! (values nil
                                       :state-machine-before-hook-rejected
                                       state-machine-before-hooks-result))))
     ;; check `before-hooks' of found `state-definition'
     (let ((state-def-before-hooks-result
-            (call-before-hooks (before-hooks state-def)
-                               a-state-transition)))
+            (call-before-hooks* (before-hooks state-def)
+                                a-state-transition)))
       (when state-def-before-hooks-result
         (return-from trigger! (values nil
                                       :state-definition-before-hook-rejected

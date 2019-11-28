@@ -11,6 +11,7 @@
                 ((:file "package")
                  (:file "suites")
                  (:file "utils")
+                 (:file "conditions")
                  (:file "state-machine-examples")
                  (:file "type-preds")
                  (:file "accessors")
