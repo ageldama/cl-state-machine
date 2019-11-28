@@ -12,21 +12,21 @@
     :initarg :terminal :initform nil :type boolean :reader terminal
     :documentation "Mark it as terminal state.")
    (before-hooks
-    :initarg :before-hooks :initform (list #'always-nil) :type function-list :accessor before-hooks
+    :initarg :before-hooks :initform '() :type function-list :accessor before-hooks
     :documentation "List of `before-hook-function's.
 
- Will be evaluated sequentially before trainsition of the state of
-    `state-machine' to this `state-definition', and each hook function
-    should return a boolean value.
+Will be evaluated sequentially before trainsition of the state of
+    `state-machine' to this `state-definition'.
 
-When a hook function evaluated as false value, will reject the state
-    transition and stop the evaluation of rest hook functions.")
+When a hook function evaluates `reject-transition!' function, will
+    reject the state transition and stop the evaluation of subsequent
+    hook functions.")
    (after-hooks
     :initarg :after-hooks :initform '() :type function-list :accessor after-hooks
     :documentation "List of `after-hook-function'.
 
-Will be evaluated when the state of `state-machine' has change to this
-    `state-definition'.")))
+Will be evaluated when the state of `state-machine' has changed to
+    this `state-definition'.")))
 
 (defmethod print-object ((obj state-definition) out)
   (print-unreadable-object (obj out :type t)

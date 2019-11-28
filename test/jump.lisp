@@ -13,7 +13,9 @@
                  :global-before-hooks (list (make-hook :global-before t))
                  :global-after-hooks (list (make-hook :global-after t))
                  :state-before-hooks (list (make-hook :state-before t))
-                 :state-after-hooks (list (make-hook :state-after t)))))
+                 :state-after-hooks (list (make-hook :state-after t))
+                 :transition-before-hooks (list (make-hook :transition-before t))
+                 :transition-after-hooks (list (make-hook :transition-after t)))))
         ;; OK
         (jump! sm :being-rich)
         (is (eq (current-state sm) :being-rich))

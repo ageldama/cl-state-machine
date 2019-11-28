@@ -45,15 +45,17 @@ Will print:
   E => NIL
 
 And evaluate as `nil'."
-  `(let ((,(car kv-names) nil)
-         (,(cadr kv-names) nil))
-     (loop :with idx := 0
-           :for i :on ,plist
-           :do (progn (when (evenp idx)
-                        (psetf ,(car kv-names) (car i)
-                               ,(cadr kv-names) (cadr i))
-                        ,@body)
-                      (incf idx)))))
+  (let ((idx# (gensym))
+        (i# (gensym)))
+    `(let ((,(car kv-names) nil)
+           (,(cadr kv-names) nil))
+       (loop :with ,idx# := 0
+             :for ,i# :on ,plist
+             :do (progn (when (evenp ,idx#)
+                          (psetf ,(car kv-names) (car ,i#)
+                                 ,(cadr kv-names) (cadr ,i#))
+                          ,@body)
+                        (incf ,idx#))))))
 
 
 (defun plist-copy (include-nil-val? a-plist)

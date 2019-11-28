@@ -4,7 +4,9 @@
 (defun state-machine-example-01 (&key (global-before-hooks '())
                                    (global-after-hooks '())
                                    (state-before-hooks '())
-                                   (state-after-hooks '()))
+                                   (state-after-hooks '())
+                                   (transition-before-hooks '())
+                                   (transition-after-hooks '()))
   (state-machine-of `(:current-state :at-home
                       :before-hooks ,global-before-hooks
                       :after-hooks ,global-after-hooks)
@@ -24,17 +26,29 @@
                         :before-hooks ,state-before-hooks
                         :after-hooks ,state-after-hooks))
                     (`(:from :at-home :to :at-work
-                       :event :home->work)
+                       :event :home->work
+                       :before-hooks ,transition-before-hooks
+                       :after-hooks ,transition-after-hooks)
                       `(:from :at-home :to :in-bed
-                        :event :home->bed)
+                        :event :home->bed
+                        :before-hooks ,transition-before-hooks
+                       :after-hooks ,transition-after-hooks)
                       `(:from :in-bed :to :at-home
-                        :event :wake-up)
+                        :event :wake-up
+                        :before-hooks ,transition-before-hooks
+                       :after-hooks ,transition-after-hooks)
                       `(:from :at-home :to :nirvana
-                        :event :meditate)
+                        :event :meditate
+                        :before-hooks ,transition-before-hooks
+                       :after-hooks ,transition-after-hooks)
                       `(:from :at-work :to :at-home
-                        :event :work->home)
+                        :event :work->home
+                        :before-hooks ,transition-before-hooks
+                       :after-hooks ,transition-after-hooks)
                       `(:from :at-work :to :being-rich
-                        :event :show-me-the-money))))
+                        :event :show-me-the-money
+                        :before-hooks ,transition-before-hooks
+                        :after-hooks ,transition-after-hooks))))
 
 (defun state-machine-example--started ()
   (state-machine-of '(:current-state :a)

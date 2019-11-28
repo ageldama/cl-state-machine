@@ -13,8 +13,8 @@
 Will be evaluated on every state transition of this `state-machine'
     sequentially.
 
- When a hook function evaluated as false, reject the
-    state transition and stop the evaluation of rest hook functions.")
+If a hook function evaluate `reject-transition!' function, reject the
+    state transition and stop the evaluation of subsequent hook functions.")
    (after-hooks
     :initarg :after-hooks :initform '() :type function-list :accessor after-hooks
     :documentation "List of `after-hook-function's.

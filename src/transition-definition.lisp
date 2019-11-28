@@ -9,7 +9,23 @@
     :documentation "Description string. (Optional)")
    (event :initarg :event :reader event :type symbol
           :documentation "Event name that triggers a transition to the
-          state. (Optional)" ))
+          state. (Optional)" )
+   (before-hooks
+    :initarg :before-hooks :initform '() :type function-list :accessor before-hooks
+    :documentation "List of `before-hook-function's.
+
+Will be evaluated sequentially before trainsition of the state of
+    `state-machine' by this `transition-definition'.
+
+When a hook function evaluates `reject-transition!' function, will
+    reject the state transition and stop the evaluation of subsequent
+    hook functions.")
+   (after-hooks
+    :initarg :after-hooks :initform '() :type function-list :accessor after-hooks
+    :documentation "List of `after-hook-function'.
+
+Will be evaluated when the state of `state-machine' has changed to
+    this `transition-definition'."))
   (:documentation "Represent a transition between one state to another
   state."))
 
