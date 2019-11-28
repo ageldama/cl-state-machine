@@ -53,6 +53,7 @@
    :state-machine
    :state-machine--state-definitions
    :state-machine--transition-definitions
+   :state-machine--datum
 
    :find-state-definition-by-state
    :find-transition-definition-by-state-and-event

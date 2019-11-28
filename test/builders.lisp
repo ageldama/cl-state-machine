@@ -43,3 +43,13 @@
       (is (and (eq :a (from-state td-1))
                (eq :b (to-state td-1))
                (eq :a->b (event td-1)))))))
+
+
+(test state-machine-of+datum
+  (let ((state-m (state-machine-of
+                  '(:current-state :a
+                    :datum :my-datum)
+                  (`(:state :a)) ; states
+                  () ; transitions
+                  )))
+    (is (eq :my-datum (state-machine--datum state-m)))))

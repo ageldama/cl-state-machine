@@ -28,6 +28,10 @@ Will be evaluated on every state transition of this `state-machine'.")
     :initarg :transition-definitions :initform '()
     :type transition-definition-list :reader state-machine--transition-definitions
     :documentation "List of `transition-definition's.")
+   (datum
+    :initarg :datum :initform nil
+    :reader state-machine--datum
+    :documentation "Anything you want to attach to a `state-machine'")
    (%state-definition-by-state :initform (make-hash-table))
    (%possible-events-by-state :initform (make-hash-table))
    (%transition-definitions-by-state-event-tuple :initform (make-hash-table :test #'equal))))
