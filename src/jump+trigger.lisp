@@ -119,4 +119,4 @@ evaluated values are:
     (call-after-hooks (after-hooks state-def) a-state-transition)
     (call-after-hooks (after-hooks a-state-machine) a-state-transition)
     ;; return
-    (values next-state nil nil)))
+    (values (current-state a-state-machine) nil nil)))

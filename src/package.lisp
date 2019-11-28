@@ -51,9 +51,9 @@
    :before-hooks
    :after-hooks
    :state-machine
-   :state-machine--state-definitions
-   :state-machine--transition-definitions
-   :state-machine--datum
+   :state-definitions
+   :transition-definitions
+   :datum
 
    :find-state-definition-by-state
    :find-transition-definition-by-state-and-event

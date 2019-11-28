@@ -35,9 +35,9 @@
                     `(:state :b))
                   (`(:from :a :to :b :event :a->b)))))
     (is (eq :a (current-state state-m)))
-    (let ((sd-1 (first (state-machine--state-definitions state-m)))
-          (sd-2 (second (state-machine--state-definitions state-m)))
-          (td-1 (first (state-machine--transition-definitions state-m))))
+    (let ((sd-1 (first (state-definitions state-m)))
+          (sd-2 (second (state-definitions state-m)))
+          (td-1 (first (transition-definitions state-m))))
       (is (eq :a (state sd-1)))
       (is (eq :b (state sd-2)))
       (is (and (eq :a (from-state td-1))
@@ -52,4 +52,4 @@
                   (`(:state :a)) ; states
                   () ; transitions
                   )))
-    (is (eq :my-datum (state-machine--datum state-m)))))
+    (is (eq :my-datum (datum state-m)))))

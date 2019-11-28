@@ -42,7 +42,7 @@
   (format out "}~%"))
 
 
-(defun write-dot-file (output-pathname &rest dot-string-args)
+(defun write-dot-file (output-pathname a-state-machine &rest dot-string-args)
   (uiop:call-with-output-file output-pathname
-                              #'(lambda (out) (apply #'write-dot (append (list out)
+                              #'(lambda (out) (apply #'write-dot (append (list out a-state-machine)
                                                                          dot-string-args)))))

@@ -22,15 +22,15 @@ If a hook function evaluate `reject-transition!' function, reject the
 Will be evaluated on every state transition of this `state-machine'.")
    (state-definitions
     :initarg :state-definitions :initform '()
-    :type state-definition-list :reader state-machine--state-definitions
+    :type state-definition-list :reader state-definitions
     :documentation "List of `state-definition's.")
    (transition-definitions
     :initarg :transition-definitions :initform '()
-    :type transition-definition-list :reader state-machine--transition-definitions
+    :type transition-definition-list :reader transition-definitions
     :documentation "List of `transition-definition's.")
    (datum
     :initarg :datum :initform nil
-    :reader state-machine--datum
+    :reader datum
     :documentation "Anything you want to attach to a `state-machine'")
    (%state-definition-by-state :initform (make-hash-table))
    (%possible-events-by-state :initform (make-hash-table))

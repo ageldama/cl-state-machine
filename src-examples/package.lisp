@@ -1,6 +1,8 @@
 (in-package :cl-user)
 
 (defpackage #:cl-state-machine-examples
-  (:use :common-lisp :cl-state-machine)
+  (:use :common-lisp :cl-state-machine :alexandria)
   (:export
-   :run-tamagochi))
+   :run-tamagochi
+   :write-dot-file-example
+   ))
