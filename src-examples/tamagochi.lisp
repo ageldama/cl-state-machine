@@ -17,20 +17,22 @@
           :accessor turns
           :initform 0)))
 
-(defun foo ()
-  (state-machine-of `(:current-state :home)
-                    (`(:state :work)
-                      `(:state :dead :terminal t))
-                    (`(:from :home :to :work
-                       :event :go-to-work)
-                      `(:from :work :to :home
-                        :event :go-home)
-                      `(:from :home :to :home
-                        :event :eat)
-                      `(:from :home :to :home
-                        :event :sleep)
-                      `(:from :home :to :home
-                        :event :shower))))
+(defun make-tamagochi-state-machine ()
+  (let* ((a-status (make-instance 'tamagochi-status)))
+    (state-machine-of `(:current-state :home
+                        :datum ,a-status)
+                      (`(:state :work)
+                        `(:state :dead :terminal t))
+                      (`(:from :home :to :work
+                         :event :go-to-work)
+                        `(:from :work :to :home
+                          :event :go-home)
+                        `(:from :home :to :home
+                          :event :eat)
+                        `(:from :home :to :home
+                          :event :sleep)
+                        `(:from :home :to :home
+                          :event :shower)))))
 
 (defun run-tamagochi ()
   ;; TODO
