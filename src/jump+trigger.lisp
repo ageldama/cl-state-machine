@@ -23,17 +23,17 @@ Signal `state-machine-error' when specified `state' is cannot be found in
 (defun trigger! (a-state-machine event &rest args)
    "Trigger the `event' on given `a-state-machine'.
 
-Evaluation values are: `(values A-STATE-SYMBOL REJECTED? REJECTION-REASON)'
+Evaluation values are: `(values NEW-STATE-SYMBOL REJECTED-BY REJECTION-REASON)'
 
 * on Success:
-  - `A-STATE-SYMBOL' is a symbol of corresponding state definition
+  - `NEW-STATE-SYMBOL' is a symbol of corresponding state definition
      of the new state.
-  - and `REJECTED?', `REJECTION-REASON' both is `nil'.
+  - and `REJECTED-BY', `REJECTION-REASON' both is `nil'.
 
 * if `a-state-machine' has terminated or the specified `event'
   cannot be triggered from current state:
-  - `A-STATE-SYMBOL' is nil.
-  - `REJECTED?' is `:CANNOT-BE-TRIGGERED'
+  - `NEW-STATE-SYMBOL' is nil.
+  - `REJECTED-BY' is `:CANNOT-BE-TRIGGERED'
     and `REJECTION-REASON' is the specified `event' parameter.
 
 * if `a-state-machine' is in illegal state:
@@ -59,8 +59,8 @@ transition by invoking `reject-transition!'. In this case, any
 subsequent hook function evaluation will be stopped and the function's
 evaluated values are:
 
-  - `A-STATE-SYMBOL' is `nil',
-  - `REJECTED?' is could be one of
+  - `NEW-STATE-SYMBOL' is `nil',
+  - `REJECTED-BY' is could be one of
     `:STATE-MACHINE-BEFORE-HOOK-REJECTED' or
     `:STATE-DEFINITION-BEFORE-HOOK-REJECTED' or
     `:TRANSITION-DEFINITION-BEFORE-HOOK-REJECTED'.

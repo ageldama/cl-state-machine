@@ -6,24 +6,28 @@
                :hygiene 5
                :health 5)
     :event->effect
-    (:eat (money -2
-                 food +3
-                 hygiene -1
-                 health +2)
-     :go-home (money -1
-                     food -1
-                     hygiene -1
-                     health +1)
-     :go-to-work (money +5
-                        food -1
-                        hygiene -1
-                        health -2)
-     :sleep (food -1
-                  hygiene -1
-                  health +3)
-     :shower (food -1
-                   hygiene +3
-                   health +1))))
+    (:eat (:money -2
+                 :food +3
+                 :hygiene -1
+                 :health +2)
+     :go-home (:money -1
+                     :food -1
+                     :hygiene -1
+                     :health +1)
+     :go-to-work (:money +5
+                        :food -1
+                        :hygiene -1
+                        :health -2)
+     :sleep (:food -1
+                  :hygiene -1
+                  :health +3)
+     :shower (:food -1
+                   :hygiene +3
+                   :health +1))
+    :constraints
+    (:money ,(lambda (current-val effect-val)
+               (when (< (+ current-val effect-val) 0)
+                 :not-enough-money)))))
 
 (defclass tamagochi-status ()
   ((money :initarg :money
@@ -87,9 +91,16 @@
              (state-transition-transition-definition a-state-transition))
            (event (event transition-def))
            (model (model a-status))
-           (effects (getf (getf model :event->effect) event)))
+           (effects (getf (getf model :event->effect) event))
+           (constraints (getf model :constraints)))
       (doplist (k v effects)
-               (incf (slot-value a-status (keyword->symbol k)) v)))))
+               (let ((slot-symbol (keyword->symbol k)))
+                 (when-let (constraint (getf constraints k))
+                   (when-let (reason (funcall constraint
+                                              (slot-value a-status slot-symbol) v))
+                     (reject-transition! :datum reason)))
+                 ;; all constraints satisfied
+                 (incf (slot-value a-status slot-symbol) v))))))
 
 (defun make-tamagochi-state-machine (a-tamagochi-status)
   (state-machine-of `(:current-state :home
@@ -145,6 +156,11 @@
                        (format *query-io* "~%~%Bye!~%")
                        (return-from repl-loop))
                      (if (member choice (possible-events a-state-machine))
-                         (trigger! a-state-machine choice)
+                         (multiple-value-bind (new-state rejected-by rejection-reason)
+                             (trigger! a-state-machine choice)
+                           (declare (ignore rejected-by))
+                           (unless new-state
+                             (format *query-io* "Cannot do ~a, because of ~a~%~%"
+                                     choice (cdr rejection-reason))))
                          (format *query-io* "~a ???~%" choice))))))
 
