@@ -1,24 +1,58 @@
 (in-package :cl-state-machine-examples)
 
+(defparameter *tamagochi-model*
+  `(:initargs (:money 5
+               :food 5
+               :hygiene 5
+               :health 5)
+    :event->effect
+    (:eat (money -2
+                 food +3
+                 hygiene -1
+                 health +2)
+     :go-home (money -1
+                     food -1
+                     hygiene -1
+                     health +1)
+     :go-to-work (money +5
+                        food -1
+                        hygiene -1
+                        health -2)
+     :sleep (food -1
+                  hygiene -1
+                  health +3)
+     :shower (food -1
+                   hygiene +3
+                   health +1))))
+
 (defclass tamagochi-status ()
   ((money :initarg :money
-          :accessor money
-          :initform 5)
+          :accessor money)
    (food :initarg :food
-         :accessor food
-         :initform 5)
+         :accessor food)
    (hygiene :initarg :hygiene
-            :accessor hygiene
-            :initform 5)
+            :accessor hygiene)
    (health :initarg :health
-           :accessor health
-           :initform 5)
+           :accessor health)
    (turns :initarg :turns
           :accessor turns
           :initform 0)
    (cause-of-death :initarg :cause-of-death
                    :accessor cause-of-death
-                   :initform nil)))
+                   :initform nil)
+   (model :initarg :model
+          :reader model
+          :initform *tamagochi-model*)))
+
+(defun keyword->symbol (kw-or-symbol)
+  (with-input-from-string (s-in (string kw-or-symbol))
+    (read s-in)))
+
+(defmethod initialize-instance :after ((a-tamagochi-status tamagochi-status) &rest args)
+  (declare (ignore args))
+  (let ((initargs (getf (model a-tamagochi-status) :initargs)))
+    (doplist (k v initargs)
+             (setf (slot-value a-tamagochi-status (keyword->symbol k)) v))))
 
 (defmacro with-tamagochi-status (binding-name a-state-transition &rest body)
   (let ((a-state-machine# (gensym)))
@@ -46,82 +80,45 @@
   (with-tamagochi-status status a-state-transition
     (incf (turns status))))
 
-(defun go-to-work-before-hook (a-state-transition &rest args)
+(defun apply-model-before-hook (a-state-transition &rest args)
   (declare (ignore args))
-  (with-tamagochi-status status a-state-transition
-    (when (>= 0 (money status)) (reject-transition! :datum :no-money))
-    ;; else
-    (incf (money status) 5)
-    (decf (food status) 1)
-    (decf (hygiene status) 1)
-    (decf (health status) 1)))
-
-(defun go-home-before-hook (a-state-transition &rest args)
-  (declare (ignore args))
-  (with-tamagochi-status status a-state-transition
-    (when (>= 0 (money status)) (reject-transition! :datum :no-money))
-    ;; else
-    (decf (money status) 1)
-    (decf (food status) 1)
-    (decf (hygiene status) 1)
-    (incf (health status) 1)))
-
-(defun eat-before-hook (a-state-transition &rest args)
-  (declare (ignore args))
-  (with-tamagochi-status status a-state-transition
-    (when (>= 0 (money status)) (reject-transition! :datum :no-money))
-    ;; else
-    (decf (money status) 2)
-    (incf (food status) 3)
-    (decf (hygiene status) 1)
-    (incf (health status) 2)))
-
-(defun sleep-before-hook (a-state-transition &rest args)
-  (declare (ignore args))
-  (with-tamagochi-status status a-state-transition
-    (decf (food status) 1)
-    (decf (hygiene status) 1)
-    (incf (health status) 3)))
-
-(defun shower-before-hook (a-state-transition &rest args)
-  (declare (ignore args))
-  (with-tamagochi-status status a-state-transition
-    (decf (food status) 1)
-    (incf (hygiene status) 3)
-    (incf (health status) 1)))
+  (with-tamagochi-status a-status a-state-transition
+    (let* ((transition-def
+             (state-transition-transition-definition a-state-transition))
+           (event (event transition-def))
+           (model (model a-status))
+           (effects (getf (getf model :event->effect) event)))
+      (doplist (k v effects)
+               (incf (slot-value a-status (keyword->symbol k)) v)))))
 
 (defun make-tamagochi-state-machine (a-tamagochi-status)
   (state-machine-of `(:current-state :home
                       :datum ,a-tamagochi-status
+                      :before-hooks (list ,#'apply-model-before-hook)
                       :after-hooks (list ,#'is-alive?-after-hook
                                          ,#'inc-turns-after-hook))
                     (`(:state :home)
                       `(:state :work)
                       `(:state :dead :terminal t))
                     (`(:from :home :to :work
-                       :event :go-to-work
-                       :before-hooks (list ,#'go-to-work-before-hook))
+                       :event :go-to-work)
                       `(:from :work :to :home
-                        :event :go-home
-                        :before-hooks (list ,#'go-home-before-hook))
+                        :event :go-home)
                       `(:from :home :to :home
-                        :event :eat
-                        :before-hooks (list ,#'eat-before-hook))
+                        :event :eat)
                       `(:from :home :to :home
-                        :event :sleep
-                        :before-hooks (list ,#'sleep-before-hook))
+                        :event :sleep)
                       `(:from :home :to :home
-                        :event :shower
-                        :before-hooks (list ,#'shower-before-hook)))))
+                        :event :shower))))
 
 (defun display-status (a-tamagochi-status a-state-machine)
   (terpri)
   ;; alive?
   (when (eq :dead (current-state a-state-machine))
-    (format t "Your tamagochi is dead (Cause: ~a)~%"
+    (format *query-io* "Your tamagochi is dead (Cause: ~a)~%"
             (cause-of-death a-tamagochi-status)))
   ;; numbers..
-  (format t "Status: Money=~a Food=~a Hygiene=~a Health=~a / Turns=~a~%"
+  (format *query-io* "Status: Money=~a Food=~a Hygiene=~a Health=~a / Turns=~a~%"
           (money a-tamagochi-status)
           (food a-tamagochi-status)
           (hygiene a-tamagochi-status)
@@ -131,11 +128,11 @@
 (defun prompt (a-tamagochi-status a-state-machine)
   (declare (ignore a-tamagochi-status))
   (terpri)
-  (format t "Choice:~% ~{~s ~}~%"
+  (format *query-io* "Choice:~% ~{~s ~}~%"
           (append (list :quit)
                   (possible-events a-state-machine)))
-  (princ ">>> ")
-  (read))
+  (format *query-io* ">>> ")
+  (read *query-io*))
 
 (defun run-tamagochi ()
   (let* ((a-status (make-instance 'tamagochi-status))
@@ -145,9 +142,9 @@
           :do (progn (display-status a-status a-state-machine)
                      (setf choice (prompt a-status a-state-machine))
                      (when (eq :quit choice)
-                       (format t "~%~%Bye!~%")
+                       (format *query-io* "~%~%Bye!~%")
                        (return-from repl-loop))
                      (if (member choice (possible-events a-state-machine))
                          (trigger! a-state-machine choice)
-                         (format t "~a ???~%" choice))))))
+                         (format *query-io* "~a ???~%" choice))))))
 
