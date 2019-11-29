@@ -54,6 +54,7 @@
 
 (defmethod initialize-instance :after ((a-tamagochi-status tamagochi-status) &rest args)
   (declare (ignore args))
+  ;; copy `:initargs' of `model'-slot into corresponding slot of `tamagochi-status'
   (let ((initargs (getf (model a-tamagochi-status) :initargs)))
     (doplist (k v initargs)
              (setf (slot-value a-tamagochi-status (keyword->symbol k)) v))))
@@ -95,11 +96,12 @@
            (constraints (getf model :constraints)))
       (doplist (k v effects)
                (let ((slot-symbol (keyword->symbol k)))
+                 ;; constraint checks
                  (when-let (constraint (getf constraints k))
                    (when-let (reason (funcall constraint
                                               (slot-value a-status slot-symbol) v))
                      (reject-transition! :datum reason)))
-                 ;; all constraints satisfied
+                 ;; all constraints satisfied, update state
                  (incf (slot-value a-status slot-symbol) v))))))
 
 (defun make-tamagochi-state-machine (a-tamagochi-status)
@@ -159,8 +161,10 @@
                          (multiple-value-bind (new-state rejected-by rejection-reason)
                              (trigger! a-state-machine choice)
                            (declare (ignore rejected-by))
+                           ;; transition rejected
                            (unless new-state
                              (format *query-io* "Cannot do ~a, because of ~a~%~%"
                                      choice (cdr rejection-reason))))
+                         ;; unknown choice
                          (format *query-io* "~a ???~%" choice))))))
 
