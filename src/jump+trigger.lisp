@@ -20,8 +20,44 @@ Signal `state-machine-error' when specified `state' is cannot be found in
       (setf current-state state))))
 
 
+(defparameter *trigger!-clear-history* t
+  "Whether `trigger!' evaluates `empty-trigger-history' on its'
+  starting. (Default: `T')")
+
+(defmacro %with-trigger!-params (a-state-machine event args
+                                 (sym-cur-state sym-transition-def sym-state-def sym-next-state sym-state-transition)
+                                 &rest body)
+  (let ((transition-def-nil?# (gensym))
+        (state-def-nil?# (gensym)))
+    `(let* ((,sym-cur-state (current-state ,a-state-machine))
+            ;; find `transition-definition'
+            (,sym-transition-def
+              (find-transition-definition-by-state-and-event ,a-state-machine
+                                                             ,sym-cur-state
+                                                             ,event))
+            (,transition-def-nil?# (unless ,sym-transition-def
+                                     (error 'state-machine-error
+                                            :format-string
+                                            "`transition-definition' cannot be found by state/event (~a, ~a) in `state-machine' (~a)"
+                                            :format-arguments (list ,sym-cur-state ,event ,a-state-machine))))
+            (,sym-next-state (to-state ,sym-transition-def))
+            ;; find `state-definition'
+            (,sym-state-def (find-state-definition-by-state
+                             ,a-state-machine ,sym-next-state))
+            (,state-def-nil?# (unless ,sym-state-def
+                                (error 'state-machine-error
+                                       :format-string
+                                       "`state-definition' for state (~a) in `state-machine' (~a) cannot be found"
+                                       :format-arguments (list ,sym-next-state ,a-state-machine))))
+            ;; build `state-transition'
+            (,sym-state-transition (make-state-transition :state-machine ,a-state-machine
+                                                          :transition-definition ,sym-transition-def
+                                                          :args ,args)))
+     (declare (ignore ,transition-def-nil?# ,state-def-nil?#))
+     ,@body)))
+
 (defun trigger! (a-state-machine event &rest args)
-   "Trigger the `event' on given `a-state-machine'.
+  "Trigger the `event' on given `a-state-machine'.
 
 Evaluation values are: `(values NEW-STATE-SYMBOL REJECTED-BY REJECTION-REASON)'
 
@@ -70,53 +106,42 @@ evaluated values are:
 "
   (declare (type state-machine a-state-machine)
            (type symbol event))
-  (unless (can? a-state-machine event)
-    (return-from trigger! (values nil :cannot-be-triggered event)))
-  (let* ((cur-state (current-state a-state-machine))
-         ;; find `transition-definition'
-         (transition-def
-           (find-transition-definition-by-state-and-event a-state-machine
-                                                          cur-state
-                                                          event))
-         (transition-def-nil? (unless transition-def
-                                (error 'state-machine-error
-                                       :format-string
-                                       "`transition-definition' cannot be found by state/event (~a, ~a) in `state-machine' (~a)"
-                                       :format-arguments (list cur-state event a-state-machine))))
-         (next-state (to-state transition-def))
-         ;; find `state-definition'
-         (state-def (find-state-definition-by-state
-                     a-state-machine next-state))
-         (state-def-nil? (unless state-def
-                           (error 'state-machine-error
-                                  :format-string
-                                  "`state-definition' for state (~a) in `state-machine' (~a) cannot be found"
-                                  :format-arguments (list next-state a-state-machine))))
-         ;; build `state-transition'
-         (a-state-transition (make-state-transition :state-machine a-state-machine
-                                                    :transition-definition transition-def
-                                                    :args args)))
-    (declare (ignore transition-def-nil? state-def-nil?))
-    (macrolet ((check-before-hooks (hooks a-state-transition rejected-by)
-                 (let ((result# (gensym)))
-                   `(let ((,result#
-                            (call-before-hooks* ,hooks ,a-state-transition)))
-                      (when ,result#
-                        (return-from trigger! (values nil ,rejected-by ,result#)))))))
-      (check-before-hooks (before-hooks a-state-machine)
-                          a-state-transition
-                          :state-machine-before-hook-rejected)
-      (check-before-hooks (before-hooks state-def)
-                          a-state-transition
-                          :state-definition-before-hook-rejected)
-      (check-before-hooks (before-hooks transition-def)
-                          a-state-transition
-                          :transition-definition-before-hook-rejected))
-    ;; `jump!'
-    (jump! a-state-machine next-state)
-    ;; and `call-after-hooks's
-    (call-after-hooks (after-hooks transition-def) a-state-transition)
-    (call-after-hooks (after-hooks state-def) a-state-transition)
-    (call-after-hooks (after-hooks a-state-machine) a-state-transition)
-    ;; return
-    (values (current-state a-state-machine) nil nil)))
+  (macrolet ((%return-trigger! (new-state rejected-by rejection-reason)
+               `(progn (append-trigger-history (list ,new-state ,rejected-by ,rejection-reason))
+                       (return-from trigger!
+                         (values ,new-state ,rejected-by ,rejection-reason))))
+             (%return-trigger!-ok (new-state)
+               `(%return-trigger! ,new-state nil nil))
+             (%return-trigger!-fail (rejected-by rejection-reason)
+               `(%return-trigger! nil ,rejected-by ,rejection-reason))
+             (%check-before-hooks (hooks a-state-transition rejected-by)
+               (let ((result# (gensym)))
+                 `(let ((,result#
+                          (call-before-hooks* ,hooks ,a-state-transition)))
+                    (when ,result#
+                      (%return-trigger!-fail ,rejected-by ,result#))))))
+    (unless (can? a-state-machine event)
+      (%return-trigger!-fail :cannot-be-triggered event))
+    ;;
+    (when *trigger!-clear-history* (empty-trigger-history))
+    ;; bindings, bindings..
+    (%with-trigger!-params a-state-machine event args
+        (cur-stgate transition-def state-def next-state a-state-transition)
+        ;;
+        (%check-before-hooks (before-hooks a-state-machine)
+                             a-state-transition
+                             :state-machine-before-hook-rejected)
+        (%check-before-hooks (before-hooks state-def)
+                             a-state-transition
+                             :state-definition-before-hook-rejected)
+        (%check-before-hooks (before-hooks transition-def)
+                             a-state-transition
+                             :transition-definition-before-hook-rejected)
+        ;;
+        (jump! a-state-machine next-state)
+        ;;
+        (call-after-hooks (after-hooks transition-def) a-state-transition)
+        (call-after-hooks (after-hooks state-def) a-state-transition)
+        (call-after-hooks (after-hooks a-state-machine) a-state-transition)
+        ;;
+        (%return-trigger!-ok (current-state a-state-machine)))))

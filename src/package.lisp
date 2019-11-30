@@ -60,8 +60,10 @@
    :can?
    :possible-events
    :terminated?
+
    :trigger!
    :jump!
+   :*trigger!-clear-history*
 
    :state-machine-of
 

@@ -11,6 +11,7 @@
     (is (eq (trigger-schedule-entry-args entry) args))))
 
 (test with-own-trigger-schedules-and-history
+  (empty-trigger-history)
   (is (eq 0 (length *trigger-schedules*)))
   (is (eq 0 (length *trigger-history*)))
   ;;
@@ -22,7 +23,7 @@
                     (append-trigger-history '(:done-b)))))
     (is (eq 0 (length (getf result :schedules))))
     (is (equal (getf result :history)
-               '(:done-a :done-b))))
+               '((:done-a) (:done-b)))))
   ;;
   (is (eq 0 (length *trigger-schedules*)))
   (is (eq 0 (length *trigger-history*))))
@@ -64,8 +65,26 @@
   (with-own-trigger-schedules-and-history
       ()
       ;;
-      (append-trigger-history `(:a))
-      (append-trigger-history `(:b))
+      (append-trigger-history `(:a 1 2 3))
+      (append-trigger-history `(:b 7 8 9))
       (is (eq 2 (length *trigger-history*)))
       (empty-trigger-history)
       (is (eq 0 (length *trigger-history*)))))
+
+(test trigger!-appends-history
+  (empty-trigger-history)
+  (let ((sm (state-machine-example-01))
+        (*trigger!-clear-history* nil))
+    (with-own-trigger-schedules-and-history
+        ()
+        ;;
+        (trigger! sm :home->work)
+        (trigger! sm :work->home :quickly)
+        (is (eq 2 (length *trigger-history*)))
+        (is (equal '(:at-home nil nil) (second *trigger-history*)))
+        ;;
+        (let ((*trigger!-clear-history* t))
+          (is (eq 2 (length *trigger-history*)))
+          (trigger! sm :home->bed)
+          (is (eq 1 (length *trigger-history*))))))
+  (is (eq 0 (length *trigger-history*))))

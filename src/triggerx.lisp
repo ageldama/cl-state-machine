@@ -27,7 +27,7 @@
   (setf *trigger-schedules* '()))
 
 (defun append-trigger-history (trigger!-values-list)
-  (append-f *trigger-history* trigger!-values-list))
+  (append-f *trigger-history* (list trigger!-values-list)))
 
 (defun empty-trigger-history ()
   (setf *trigger-history* '()))
