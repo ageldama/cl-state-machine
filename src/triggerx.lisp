@@ -19,6 +19,8 @@
   (append-f *trigger-schedules*
             `(,(make-trigger-schedule-entry event args))))
 
+;; TODO schedule-next-trigger ++ checks?
+
 (defun pop-next-scheduled-trigger ()
   "`nil' if there's no entry in `*trigger-schedules*'."
   (pop *trigger-schedules*))

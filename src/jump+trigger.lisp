@@ -106,6 +106,7 @@ evaluated values are:
 "
   (declare (type state-machine a-state-machine)
            (type symbol event))
+  ;; ..where macros are:
   (macrolet ((%return-trigger! (new-state rejected-by rejection-reason)
                `(return-from trigger!
                   (values ,new-state ,rejected-by ,rejection-reason)))
@@ -126,12 +127,13 @@ evaluated values are:
                     (when ,result#
                       (%log-history+return-trigger!-fail ,a-state-machine ,event ,args
                                                          ,rejected-by ,result#))))))
+    ;; preconditions
     (unless (can? a-state-machine event)
       (%log-history+return-trigger!-fail a-state-machine event args
                                          :cannot-be-triggered event))
-    ;;
+    ;; clear previous history?
     (when *trigger!-clear-history* (empty-trigger-history))
-    ;; bindings, bindings..
+    ;; actual body
     (%with-trigger!-params a-state-machine event args
         (cur-stgate transition-def state-def next-state a-state-transition)
         ;;
@@ -156,4 +158,13 @@ evaluated values are:
         ;;
         (append-trigger-history* :state-machine a-state-machine :event event :args args
                                  :new-state (current-state a-state-machine))
-        (%return-trigger!-ok (current-state a-state-machine)))))
+        (let ((next-schedule (pop-next-scheduled-trigger)))
+          (if next-schedule
+              ;; then, tail recursive call
+              (let ((*trigger!-clear-history* nil))
+                (apply #'trigger!
+                       (append (list a-state-machine
+                                     (trigger-schedule-entry-event next-schedule))
+                               (trigger-schedule-entry-args next-schedule))))
+              ;; else: just return.
+              (%return-trigger!-ok (current-state a-state-machine)))))))

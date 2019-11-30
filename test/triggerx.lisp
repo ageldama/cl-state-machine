@@ -93,7 +93,7 @@
           (is (eq :itself (getf result :rejected-by)))
           (is (eq :just-because (getf result :rejection-reason)))))))
 
-(test (trigger!-appends-history :suite test-suite)
+(test trigger!-appends-history
   (empty-trigger-history)
   (let ((sm (state-machine-example-01))
         (*trigger!-clear-history* nil))
@@ -129,3 +129,48 @@
           (trigger! sm :home->bed)
           (is (eq 1 (length *trigger-history*))))))
   (is (eq 0 (length *trigger-history*))))
+
+(test trigger!-by-trigger-schedules
+  (let ((sm (state-machine-example-01)))
+    (with-own-trigger-schedules-and-history
+        ()
+        ;;
+        (is (eq :at-home (current-state sm)))
+        (is (eq 0 (length *trigger-history*)))
+        ;;
+        (schedule-next-trigger :work->home :quickly)
+        (schedule-next-trigger :meditate :peacefully)
+        (schedule-next-trigger :home->work :well)
+        (schedule-next-trigger :work->home :again)
+        (trigger! sm :home->work :just-go)
+        ;;
+        (is (eq :nirvana (current-state sm)))
+        (is (eq (length *trigger-schedules*) 1))
+        (let ((rest-schedule-1st (first *trigger-schedules*)))
+          (is (eq :work->home (trigger-schedule-entry-event rest-schedule-1st)))
+          (is (equal `(:again) (trigger-schedule-entry-args rest-schedule-1st))))
+        ;;
+        (is (eq 4 (length *trigger-history*)))
+        (let* ((item (first *trigger-history*))
+               (param (getf item :param))
+               (result (getf item :result)))
+          (is (eq sm (getf param :state-machine)))
+          (is (eq :home->work (getf param :event)))
+          (is (equal '(:just-go) (getf param :args)))
+          (is (eq :at-work (getf result :new-state)))
+          (is-false (getf result :rejected-by)))
+        (let* ((item (second *trigger-history*))
+               (param (getf item :param))
+               (result (getf item :result)))
+          (is (eq :work->home (getf param :event)))
+          (is (equal '(:quickly) (getf param :args)))
+          (is (eq :at-home (getf result :new-state)))
+          (is-false (getf result :rejected-by)))
+        (let* ((item (car (last *trigger-history*)))
+               (param (getf item :param))
+               (result (getf item :result)))
+          (is (eq :home->work (getf param :event)))
+          (is (equal '(:well) (getf param :args)))
+          (is-false (getf result :new-state))
+          (is (eq :cannot-be-triggered (getf result :rejected-by)))
+          (is (eq :home->work (getf result :rejection-reason)))))))
