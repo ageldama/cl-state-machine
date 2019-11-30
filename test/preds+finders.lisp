@@ -23,7 +23,7 @@
 (test find-transition-definition-by-state-and-event
   (let ((sm (state-machine-example-01)))
     (let ((td (find-transition-definition-by-state-and-event sm :at-home :home->work)))
-      (is-true (not (null td)))
+      (is-true td)
       (is (and (eq (event td) :home->work)
                (eq (from-state td) :at-home)
                (eq (to-state td) :at-work))))

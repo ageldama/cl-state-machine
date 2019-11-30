@@ -19,7 +19,16 @@
   (append-f *trigger-schedules*
             `(,(make-trigger-schedule-entry event args))))
 
+(defun schedule-next-trigger* (a-state-machine event &rest args)
+  (when *trigger-schedules*
+    (let* ((last-schedule (car (last *trigger-schedules*)))
+           (last-schedule-event (trigger-schedule-entry-event last-schedule))
+           (expecting-state nil))
+      (can? a-state-machine event expecting-state)
+      ;; TODO
+      )))
 ;; TODO schedule-next-trigger ++ checks?
+
 
 (defun pop-next-scheduled-trigger ()
   "`nil' if there's no entry in `*trigger-schedules*'."
