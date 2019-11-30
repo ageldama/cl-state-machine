@@ -29,6 +29,17 @@
 (defun append-trigger-history (trigger!-values-list)
   (append-f *trigger-history* (list trigger!-values-list)))
 
+(defun append-trigger-history*
+  (&key ((:state-machine a-state-machine)) event args
+     new-state rejected-by rejection-reason)
+  (append-trigger-history
+  `(:param (:state-machine ,a-state-machine
+             :event ,event
+             :args ,args)
+    :result (:new-state ,new-state
+             :rejected-by ,rejected-by
+             :rejection-reason ,rejection-reason))))
+
 (defun empty-trigger-history ()
   (setf *trigger-history* '()))
 

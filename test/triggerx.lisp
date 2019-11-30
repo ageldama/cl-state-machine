@@ -37,29 +37,29 @@
     (is-false (trigger-schedule-entry-args entry))))
 
 (test pop-next-scheduled-trigger
- (with-own-trigger-schedules-and-history
-     ()
-     ;;
-     (schedule-next-trigger :my-event 1 2 3)
-     (schedule-next-trigger :another-event 7 8 9)
-     ;;
-     (let ((entry (pop-next-scheduled-trigger)))
-       (is (eq :my-event (trigger-schedule-entry-event entry)))
-       (is (equal '(1 2 3) (trigger-schedule-entry-args entry))))
-     (let ((entry (pop-next-scheduled-trigger)))
-       (is (eq :another-event (trigger-schedule-entry-event entry)))
-       (is (equal '(7 8 9) (trigger-schedule-entry-args entry))))
-     (is-false (pop-next-scheduled-trigger))))
+  (with-own-trigger-schedules-and-history
+      ()
+      ;;
+      (schedule-next-trigger :my-event 1 2 3)
+      (schedule-next-trigger :another-event 7 8 9)
+      ;;
+      (let ((entry (pop-next-scheduled-trigger)))
+        (is (eq :my-event (trigger-schedule-entry-event entry)))
+        (is (equal '(1 2 3) (trigger-schedule-entry-args entry))))
+      (let ((entry (pop-next-scheduled-trigger)))
+        (is (eq :another-event (trigger-schedule-entry-event entry)))
+        (is (equal '(7 8 9) (trigger-schedule-entry-args entry))))
+      (is-false (pop-next-scheduled-trigger))))
 
 (test empty-next-trigger-schedules
-   (with-own-trigger-schedules-and-history
-     ()
-     ;;
-     (schedule-next-trigger :my-event 1 2 3)
-     (schedule-next-trigger :another-event 7 8 9)
-     ;;
-     (empty-next-trigger-schedules)
-     (is-false (pop-next-scheduled-trigger))))
+  (with-own-trigger-schedules-and-history
+      ()
+      ;;
+      (schedule-next-trigger :my-event 1 2 3)
+      (schedule-next-trigger :another-event 7 8 9)
+      ;;
+      (empty-next-trigger-schedules)
+      (is-false (pop-next-scheduled-trigger))))
 
 (test append-trigger-history-and-empty-trigger-history
   (with-own-trigger-schedules-and-history
@@ -71,7 +71,29 @@
       (empty-trigger-history)
       (is (eq 0 (length *trigger-history*)))))
 
-(test trigger!-appends-history
+(test append-trigger-history*
+  (with-own-trigger-schedules-and-history
+      ()
+      ;;
+      (let ((sm (state-machine-example-01)))
+        (append-trigger-history* :state-machine sm
+                                 :event :my-event
+                                 :args (list 'a 'b)
+                                 :new-state :unknown
+                                 :rejected-by :itself
+                                 :rejection-reason :just-because)
+        ;;
+        (let* ((item (first *trigger-history*))
+               (param (getf item :param))
+               (result (getf item :result)))
+          (is (eq sm (getf param :state-machine)))
+          (is (eq :my-event (getf param :event)))
+          (is (equal '(a b) (getf param :args)))
+          (is (eq :unknown (getf result :new-state)))
+          (is (eq :itself (getf result :rejected-by)))
+          (is (eq :just-because (getf result :rejection-reason)))))))
+
+(test (trigger!-appends-history :suite test-suite)
   (empty-trigger-history)
   (let ((sm (state-machine-example-01))
         (*trigger!-clear-history* nil))
@@ -81,7 +103,15 @@
         (trigger! sm :home->work)
         (trigger! sm :work->home :quickly)
         (is (eq 2 (length *trigger-history*)))
-        (is (equal '(:at-home nil nil) (second *trigger-history*)))
+        (let* ((2nd (second *trigger-history*))
+               (param (getf 2nd :param))
+               (result (getf 2nd :result)))
+          (is (eq (getf param :state-machine) sm))
+          (is (eq (getf param :event) :work->home))
+          (is (equal (getf param :args) '(:quickly)))
+          (is (eq (getf result :new-state) :at-home))
+          (is (eq (getf result :rejected-by) nil))
+          (is (eq (getf result :rejection-reason) nil)))
         ;;
         (let ((*trigger!-clear-history* t))
           (is (eq 2 (length *trigger-history*)))

@@ -89,6 +89,7 @@
    :empty-next-trigger-schedules
 
    :append-trigger-history
+   :append-trigger-history*
    :empty-trigger-history
 
    :with-own-trigger-schedules-and-history

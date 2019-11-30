@@ -107,34 +107,44 @@ evaluated values are:
   (declare (type state-machine a-state-machine)
            (type symbol event))
   (macrolet ((%return-trigger! (new-state rejected-by rejection-reason)
-               `(progn (append-trigger-history (list ,new-state ,rejected-by ,rejection-reason))
-                       (return-from trigger!
-                         (values ,new-state ,rejected-by ,rejection-reason))))
+               `(return-from trigger!
+                  (values ,new-state ,rejected-by ,rejection-reason)))
              (%return-trigger!-ok (new-state)
                `(%return-trigger! ,new-state nil nil))
-             (%return-trigger!-fail (rejected-by rejection-reason)
-               `(%return-trigger! nil ,rejected-by ,rejection-reason))
-             (%check-before-hooks (hooks a-state-transition rejected-by)
+             (%log-history+return-trigger!-fail
+                 (a-state-machine event args rejected-by rejection-reason)
+               `(progn (append-trigger-history* :state-machine ,a-state-machine
+                                                :event ,event :args ,args
+                                                :rejected-by ,rejected-by
+                                                :rejection-reason ,rejection-reason)
+                       (%return-trigger! nil ,rejected-by ,rejection-reason)))
+             (%check-before-hooks (a-state-machine event args
+                                   hooks a-state-transition rejected-by)
                (let ((result# (gensym)))
                  `(let ((,result#
                           (call-before-hooks* ,hooks ,a-state-transition)))
                     (when ,result#
-                      (%return-trigger!-fail ,rejected-by ,result#))))))
+                      (%log-history+return-trigger!-fail ,a-state-machine ,event ,args
+                                                         ,rejected-by ,result#))))))
     (unless (can? a-state-machine event)
-      (%return-trigger!-fail :cannot-be-triggered event))
+      (%log-history+return-trigger!-fail a-state-machine event args
+                                         :cannot-be-triggered event))
     ;;
     (when *trigger!-clear-history* (empty-trigger-history))
     ;; bindings, bindings..
     (%with-trigger!-params a-state-machine event args
         (cur-stgate transition-def state-def next-state a-state-transition)
         ;;
-        (%check-before-hooks (before-hooks a-state-machine)
+        (%check-before-hooks a-state-machine event args
+                             (before-hooks a-state-machine)
                              a-state-transition
                              :state-machine-before-hook-rejected)
-        (%check-before-hooks (before-hooks state-def)
+        (%check-before-hooks a-state-machine event args
+                             (before-hooks state-def)
                              a-state-transition
                              :state-definition-before-hook-rejected)
-        (%check-before-hooks (before-hooks transition-def)
+        (%check-before-hooks a-state-machine event args
+                             (before-hooks transition-def)
                              a-state-transition
                              :transition-definition-before-hook-rejected)
         ;;
@@ -144,4 +154,6 @@ evaluated values are:
         (call-after-hooks (after-hooks state-def) a-state-transition)
         (call-after-hooks (after-hooks a-state-machine) a-state-transition)
         ;;
+        (append-trigger-history* :state-machine a-state-machine :event event :args args
+                                 :new-state (current-state a-state-machine))
         (%return-trigger!-ok (current-state a-state-machine)))))
