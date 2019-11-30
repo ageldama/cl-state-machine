@@ -20,6 +20,7 @@
                  (:file "preds+finders")
                  (:file "call-hook")
                  (:file "jump")
+                 (:file "triggerx")
                  (:file "trigger")
                  (:file "tests"))))
   :description "Test suites of cl-state-machine"

@@ -19,6 +19,7 @@
                  (:file "call-hook")
                  (:file "builder")
                  (:file "finders+preds")
+                 (:file "triggerx")
                  (:file "jump+trigger")
                  )))
   :description "Finite state machine"
