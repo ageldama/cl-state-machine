@@ -14,49 +14,52 @@ Evaluated as `nil' if it cannot be found."
       (declare (ignore present?))
       val)))
 
-(defun terminated? (a-state-machine)
+(defun terminated? (a-state-machine
+                    &optional (state (current-state a-state-machine)))
   "True if `a-state-machine' has reached to a `state-definition' which
-marked as `terminal' = true.
+marked as `terminal' = true or the specified `state' is a terminal
+state.
 
 Can signal `state-machine-error' on `a-state-machine' with illegal current
 state."
   (declare (type state-machine a-state-machine))
-  (let* ((cur (current-state a-state-machine))
-         (cur-state-def (find-state-definition-by-state a-state-machine cur)))
-    (when (null cur)
+  (let* ((state-def (find-state-definition-by-state a-state-machine state)))
+    (when (null state)
       (error 'state-machine-error
              :format-string "Current state of state-machine is nil, it shouldn't!"))
-    (when (null cur-state-def)
+    (when (null state-def)
       (error 'state-machine-error
              :format-string "State definition of current state is nil"))
-    (terminal cur-state-def)))
+    (terminal state-def)))
 
-(defun possible-events (a-state-machine)
-  "Find all possible `event'-symbols with current state of
-`a-state-machine'.
+(defun possible-events (a-state-machine
+                        &optional (state (current-state a-state-machine)))
+  "Find all possible `event'-symbols by current state of
+`a-state-machine' or the specified `state'.
 
 Return a list of symbols and it can be empty if there's no other
 possible event or the state machine has terminated.
 
-Signal `state-machine-error' on `a-state-machine' of illegal current state."
+Signal `state-machine-error' on illegal state."
   (declare (type state-machine a-state-machine))
   (when (terminated? a-state-machine)
     (return-from possible-events '()))
   (with-slots (%possible-events-by-state) a-state-machine
-    (multiple-value-bind (val present?) (gethash (current-state a-state-machine)
-                                                 %possible-events-by-state)
+    (multiple-value-bind (val present?)
+        (gethash state %possible-events-by-state)
       (if present? val
           '()))))
 
-(defun can? (a-state-machine event)
+(defun can? (a-state-machine event
+             &optional (state (current-state a-state-machine)))
   "Evaluate as true if `a-state-machine' can be `trigger!'-ed to
-`event'. If `a-state-machine` has been terminated, it will be
-evaluated as false as well.
+`event'. If `a-state-machine' has been terminated or the specified
+`state' is a terminal state, it will be evaluated as false as well.
 
-Signal `state-machine-error' on `a-state-machine' of illegal current state."
+Signal `state-machine-error' on `a-state-machine' of illegal state."
   (declare (type state-machine a-state-machine)
            (type symbol event))
-  (member event (possible-events a-state-machine)))
+  (member event (possible-events a-state-machine state)))
 
 (defun find-transition-definition-by-state-and-event (a-state-machine state event)
   "Can be evaluated as nil if there's no matching
