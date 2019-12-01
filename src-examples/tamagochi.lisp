@@ -7,23 +7,23 @@
                :health 5)
     :event->effect
     (:eat (:money -2
-                 :food +3
-                 :hygiene -1
-                 :health +2)
+           :food +3
+           :hygiene -1
+           :health +2)
      :go-home (:money -1
-                     :food -1
-                     :hygiene -1
-                     :health +1)
+               :food -1
+               :hygiene -1
+               :health +1)
      :go-to-work (:money +5
-                        :food -1
-                        :hygiene -1
-                        :health -2)
-     :sleep (:food -1
+                  :food -1
                   :hygiene -1
-                  :health +3)
+                  :health -2)
+     :sleep (:food -1
+             :hygiene -1
+             :health +3)
      :shower (:food -1
-                   :hygiene +3
-                   :health +1))
+              :hygiene +3
+              :health +1))
     :constraints
     (:money ,(lambda (current-val effect-val)
                (when (< (+ current-val effect-val) 0)
