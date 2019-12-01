@@ -21,6 +21,7 @@
                  (:file "call-hook")
                  (:file "jump")
                  (:file "triggerx")
+                 (:file "compute-last-state")
                  (:file "trigger")
                  (:file "tests"))))
   :description "Test suites of cl-state-machine"

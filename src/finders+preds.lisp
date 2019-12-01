@@ -47,14 +47,15 @@ Signal `state-machine-error' on illegal state."
   (with-slots (%possible-events-by-state) a-state-machine
     (multiple-value-bind (val present?)
         (gethash state %possible-events-by-state)
-      (if present? val
-          '()))))
+      (if present? val nil))))
 
 (defun can? (a-state-machine event
              &optional (state (current-state a-state-machine)))
   "Evaluate as true if `a-state-machine' can be `trigger!'-ed to
-`event'. If `a-state-machine' has been terminated or the specified
-`state' is a terminal state, it will be evaluated as false as well.
+`event'.
+
+If `a-state-machine' has been terminated or the specified `state' is a
+terminal state, it will be evaluated as false.
 
 Signal `state-machine-error' on `a-state-machine' of illegal state."
   (declare (type state-machine a-state-machine)
@@ -62,8 +63,8 @@ Signal `state-machine-error' on `a-state-machine' of illegal state."
   (member event (possible-events a-state-machine state)))
 
 (defun find-transition-definition-by-state-and-event (a-state-machine state event)
-  "Can be evaluated as nil if there's no matching
-`transition-definition."
+  "Can be evaluated as `nil' if there's no matching
+`transition-definition'."
   (with-slots (%transition-definitions-by-state-event-tuple) a-state-machine
     (let ((state-event (cons state event)))
       (gethash state-event %transition-definitions-by-state-event-tuple))))

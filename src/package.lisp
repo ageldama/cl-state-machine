@@ -15,6 +15,8 @@
    :reject-transition
    :reject-transition!
 
+   :compute-last-state
+
    ;; `state-definition'
    :state-definition
 
@@ -85,6 +87,7 @@
    :trigger-schedule-entry-args
 
    :schedule-next-trigger
+   :schedule-next-trigger*
    :pop-next-scheduled-trigger
    :empty-next-trigger-schedules
 

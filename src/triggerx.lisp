@@ -20,15 +20,18 @@
             `(,(make-trigger-schedule-entry event args))))
 
 (defun schedule-next-trigger* (a-state-machine event &rest args)
-  (when *trigger-schedules*
-    (let* ((last-schedule (car (last *trigger-schedules*)))
-           (last-schedule-event (trigger-schedule-entry-event last-schedule))
-           (expecting-state nil))
-      (can? a-state-machine event expecting-state)
-      ;; TODO
-      )))
-;; TODO schedule-next-trigger ++ checks?
+  "Append new `trigger!'-schedule with possibility check by `compute-last-state'.
 
+Evaluated as false unless it's possible `event' with current state of
+`a-state-machine' plus existing `*trigger-schedules*'."
+  (let ((schedules (append (loop :for entry :in *trigger-schedules*
+                                 :collect (trigger-schedule-entry-event entry))
+                           (list event))))
+    (multiple-value-bind (ok? state-trail event-steps-trail)
+        (compute-last-state a-state-machine schedules)
+      (declare (ignore state-trail event-steps-trail))
+      (if ok? (apply #'schedule-next-trigger (append (list event) args))
+          nil))))
 
 (defun pop-next-scheduled-trigger ()
   "`nil' if there's no entry in `*trigger-schedules*'."

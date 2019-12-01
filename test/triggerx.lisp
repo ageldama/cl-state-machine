@@ -36,6 +36,19 @@
     (is (eq :my-event (trigger-schedule-entry-event entry)))
     (is-false (trigger-schedule-entry-args entry))))
 
+(test schedule-next-trigger*
+  (let ((sm (state-machine-example-01)))
+    (with-own-trigger-schedules-and-history
+        ()
+        ;;
+        (is-true (schedule-next-trigger* sm :home->work))
+        (is-true (schedule-next-trigger* sm :work->home))
+        (is (eq 2 (length *trigger-schedules*)))
+        (is-false (schedule-next-trigger* sm :show-me-the-money))
+        (is (eq 2 (length *trigger-schedules*)))
+        (is-true (schedule-next-trigger* sm :home->bed))
+        (is (eq 3 (length *trigger-schedules*))))))
+
 (test pop-next-scheduled-trigger
   (with-own-trigger-schedules-and-history
       ()
