@@ -16,3 +16,6 @@
 *.wx64fsl
 *.wx32fsl
 *.fas
+
+/tamagochi.exe
+
