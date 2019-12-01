@@ -1,4 +1,4 @@
-(in-package :cl-state-machine-examples)
+(in-package :cl-state-machine-examples/tamagochi)
 
 (defparameter *tamagochi-model*
   `(:initargs (:money 5
@@ -147,7 +147,7 @@
   (format *query-io* ">>> ")
   (read *query-io*))
 
-(defun run-tamagochi ()
+(defun run ()
   (let* ((a-status (make-instance 'tamagochi-status))
          (a-state-machine (make-tamagochi-state-machine a-status))
          (choice nil))

@@ -1,4 +1,4 @@
-(in-package :cl-state-machine-examples)
+(in-package :cl-state-machine-examples/graphviz)
 
 (defun state-machine-example-01 ()
   (state-machine-of `(:current-state :at-home)
@@ -21,5 +21,5 @@
                         :event :show-me-the-money))))
 
 (defun write-dot-file-example (pathname)
-  (cl-state-machine-graphing:write-dot-file pathname (state-machine-example-01)))
+  (write-dot-file pathname (state-machine-example-01)))
 
