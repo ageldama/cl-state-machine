@@ -16,8 +16,7 @@
     (format out extra-header-str))
 
   ;; nodes
-  (loop :for state-def :in (state-machine--state-definitions
-                            a-state-machine)
+  (loop :for state-def :in (state-definitions a-state-machine)
         :do (format out "  node [shape = ~a, label = \"~a\"]; \"~a\";~%"
                     (if (terminal state-def) "doublecircle"
                         "circle")
@@ -32,8 +31,7 @@
             (current-state a-state-machine)))
 
   ;; edges
-  (loop :for transition-def :in (state-machine--transition-definitions
-                                 a-state-machine)
+  (loop :for transition-def :in (transition-definitions a-state-machine)
         :do (format out "  \"~a\"->\"~a\" [label=\"~a\"];~%"
                     (string (from-state transition-def))
                     (string (to-state transition-def))
