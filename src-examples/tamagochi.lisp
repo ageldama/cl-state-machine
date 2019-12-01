@@ -53,8 +53,8 @@
           :initform *tamagochi-model*)))
 
 (defun keyword->symbol (kw-or-symbol)
-  (with-input-from-string (s-in (string kw-or-symbol))
-    (read s-in)))
+  (intern (symbol-name kw-or-symbol)
+          #.*package*))
 
 (defmethod initialize-instance :after ((a-tamagochi-status tamagochi-status) &rest args)
   (declare (ignore args))
