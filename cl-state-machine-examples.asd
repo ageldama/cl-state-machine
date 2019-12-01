@@ -10,4 +10,7 @@
                  (:file "tamagochi")
                  (:file "graphviz")
                  )))
+  :build-operation "asdf:program-op"
+  :build-pathname "tamagochi.exe"
+  :entry-point "cl-state-machine-examples/tamagochi:run"
   :description "Examples of cl-state-machine")
