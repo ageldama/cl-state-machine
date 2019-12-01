@@ -31,13 +31,17 @@
 
 (defclass tamagochi-status ()
   ((money :initarg :money
-          :accessor money)
+          :accessor money
+          :initform 0)
    (food :initarg :food
-         :accessor food)
+         :accessor food
+         :initform 0)
    (hygiene :initarg :hygiene
-            :accessor hygiene)
+            :accessor hygiene
+            :initform 0)
    (health :initarg :health
-           :accessor health)
+           :accessor health
+           :initform 0)
    (turns :initarg :turns
           :accessor turns
           :initform 0)
