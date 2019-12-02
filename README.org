@@ -1,0 +1,127 @@
+#+TITLE: cl-state-machine's README
+#+AUTHOR: Jonghyouk Yun
+
+
+#+CAPTION: Example State Machine, defined in cl-state-machine
+#+NAME:   fig:Example-State-Machine.png
+[[./doc/ya-tamagochi.png]]
+
+
+  1) Define state machines in DSL.
+  2) Wire with external object by attaching hook functions.
+
+
+* Getting Started
+  1) ~git clone~ this repository.
+  2) ~(asdf:load-system :cl-state-machine)~
+     - (in case no idea how =asdf= finds ~cl-state-machine.asd~ file
+       on your disk) :
+       https://common-lisp.net/project/asdf/asdf/Configuring-ASDF-to-find-your-systems.html]]
+  3) (/Optional/) ~(asdf:test-system :cl-state-machine)~
+     - Check out test cases in ~test/~ directory.
+  4) (/Optional/) ~(asdf:load-system :cl-state-machine-examples)~
+     - Run and/or Read: ~(cl-state-machine-examples/tamagochi:run)~
+
+
+
+* TODO Basic Usages
+
+** TODO Defining a State Machine
+
+   (예제 diagram에 맞는 ~state-machine-of~ 매크로로 표현한 예시 코드를 보이기)
+
+     - 너무 복잡한 hook이 필요 없도록, money 상태 하나만 갖도록
+       만들기.
+
+*** Type ~before-hook-function~ and ~after-hook-function~
+
+*** Class ~state-machine~
+    1) ~state-definitions~
+    2) ~current-state~
+    3) ~transition-definitions~
+    4) ~before-hooks~ and ~after-hooks~
+    5) ~datum~
+
+*** Class ~state-definition~
+    1) ~state~
+    2) ~description~
+    3) ~terminal~
+    4) ~before-hooks~ and ~after-hooks~
+
+*** Macro ~state-definitions-of~
+
+*** Class ~transition-definition~
+    1) ~from-state~, ~to-state~ and ~event~
+    2) ~description~
+    3) ~before-hooks~ and ~after-hooks~
+
+*** Macro ~transition-definitions-of~
+
+*** Macro ~state-machine-of~
+
+
+
+** TODO Predicates and Inquries
+
+*** Function ~can?~
+
+*** Function ~terminated?~
+
+*** Function ~possible-events~
+
+
+
+** TODO State Changings
+
+*** Function ~jump!~
+
+*** Function ~trigger!~
+
+
+
+** TODO More on Hooks
+
+*** Function ~reject-transition!~
+    - ..and ~trigger!~
+
+
+
+
+* TODO Advanced Usages
+
+
+** Predicates and Inquries
+
+*** Function ~find-state-definition-by-state~
+
+*** Function ~find-transition-definition-by-state-and-event~
+
+
+
+
+** Scheduling Next Trigger Steps
+
+*** Function ~schedule-next-trigger*~, Hooks, and ~trigger!~ Function
+
+*** Function ~empty-next-trigger-schedules~
+
+*** ~*trigger-schedules*~, ~trigger-schedule-entry-event~, ~trigger-schedule-entry-args~
+
+*** Function ~compute-last-state~
+
+
+** Trigger History
+
+*** Variable ~*trigger-history*~
+
+*** Variable ~*trigger!-clear-history?~ and ~trigger!~ Function
+
+** Macro: ~with-own-trigger-schedule-and-history~
+
+
+
+
+
+* Contact and License
+  - Keybase: [[https://keybase.io/ageldama]]
+  - Licensed under MIT License. (Read ~LICENSE~ file)
