@@ -149,6 +149,7 @@
           (append (list :quit)
                   (possible-events a-state-machine)))
   (format *query-io* ">>> ")
+  (force-output *query-io*)
   (read *query-io*))
 
 (defun run ()
