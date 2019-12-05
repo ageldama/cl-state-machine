@@ -122,6 +122,8 @@
 
 
 
+* TODO Do Not Share Among Threads
+
 * Contact and License
   - Keybase: [[https://keybase.io/ageldama]]
   - Licensed under MIT License. (Read ~LICENSE~ file)

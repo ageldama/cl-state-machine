@@ -87,12 +87,10 @@
    :trigger-schedule-entry-args
 
    :schedule-next-trigger
-   :schedule-next-trigger*
    :pop-next-scheduled-trigger
    :empty-next-trigger-schedules
 
    :append-trigger-history
-   :append-trigger-history*
    :empty-trigger-history
 
    :with-own-trigger-schedules-and-history

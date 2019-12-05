@@ -24,7 +24,4 @@
                  (:file "jump+trigger")
                  )))
   :description "Finite state machine"
-  :long-description
-  #.(read-file-string
-     (subpathname *load-pathname* "README.md"))
   :in-order-to ((test-op (test-op "cl-state-machine-test"))))

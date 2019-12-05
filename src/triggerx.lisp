@@ -15,11 +15,11 @@
 (defun trigger-schedule-entry-args (a-trigger-schedule-entry)
   (cdr a-trigger-schedule-entry))
 
-(defun schedule-next-trigger (event &rest args)
+(defun %schedule-next-trigger (event args)
   (append-f *trigger-schedules*
             `(,(make-trigger-schedule-entry event args))))
 
-(defun schedule-next-trigger* (a-state-machine event &rest args)
+(defun schedule-next-trigger (a-state-machine event &rest args)
   "Append new `trigger!'-schedule with possibility check by `compute-last-state'.
 
 Evaluated as false unless it's possible `event' with current state of
@@ -30,7 +30,7 @@ Evaluated as false unless it's possible `event' with current state of
     (multiple-value-bind (ok? state-trail event-steps-trail)
         (compute-last-state a-state-machine schedules)
       (declare (ignore state-trail event-steps-trail))
-      (if ok? (apply #'schedule-next-trigger (append (list event) args))
+      (if ok? (apply #'%schedule-next-trigger (list event args))
           nil))))
 
 (defun pop-next-scheduled-trigger ()
@@ -40,13 +40,13 @@ Evaluated as false unless it's possible `event' with current state of
 (defun empty-next-trigger-schedules ()
   (setf *trigger-schedules* '()))
 
-(defun append-trigger-history (trigger!-values-list)
+(defun %append-trigger-history (trigger!-values-list)
   (append-f *trigger-history* (list trigger!-values-list)))
 
-(defun append-trigger-history*
+(defun append-trigger-history
   (&key ((:state-machine a-state-machine)) event args
      new-state rejected-by rejection-reason)
-  (append-trigger-history
+  (%append-trigger-history
   `(:param (:state-machine ,a-state-machine
              :event ,event
              :args ,args)
