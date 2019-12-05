@@ -87,6 +87,7 @@
    :trigger-schedule-entry-args
 
    :schedule-next-trigger
+   :schedule-next-trigger-without-check
    :pop-next-scheduled-trigger
    :empty-next-trigger-schedules
 

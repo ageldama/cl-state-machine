@@ -33,6 +33,10 @@ Evaluated as false unless it's possible `event' with current state of
       (if ok? (apply #'%schedule-next-trigger (list event args))
           nil))))
 
+(defun schedule-next-trigger-without-check (a-state-machine event &rest args)
+  (declare (ignore a-state-machine))
+  (apply #'%schedule-next-trigger (list event args)))
+
 (defun pop-next-scheduled-trigger ()
   "`nil' if there's no entry in `*trigger-schedules*'."
   (pop *trigger-schedules*))
