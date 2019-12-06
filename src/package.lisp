@@ -86,13 +86,13 @@
    :trigger-schedule-entry-event
    :trigger-schedule-entry-args
 
-   :schedule-next-trigger
-   :schedule-next-trigger-without-check
-   :pop-next-scheduled-trigger
-   :empty-next-trigger-schedules
+   :schedule-next-trigger!
+   :schedule-next-trigger-without-check!
+   :pop-next-scheduled-trigger!
+   :empty-next-trigger-schedules!
 
-   :append-trigger-history
-   :empty-trigger-history
+   :append-trigger-history!
+   :empty-trigger-history!
 
    :with-own-trigger-schedules-and-history
    ))

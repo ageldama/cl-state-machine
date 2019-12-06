@@ -11,7 +11,7 @@
     (is (eq (trigger-schedule-entry-args entry) args))))
 
 (test with-own-trigger-schedules-and-history
-  (empty-trigger-history)
+  (empty-trigger-history!)
   (is (eq 0 (length *trigger-schedules*)))
   (is (eq 0 (length *trigger-history*)))
   ;;
@@ -19,9 +19,9 @@
          (result (with-own-trigger-schedules-and-history
                      (:schedules `(,(make-trigger-schedule-entry :a nil))
                       :history `())
-                     (empty-next-trigger-schedules)
-                     (append-trigger-history :state-machine sm :event :done-a)
-                     (append-trigger-history :state-machine sm :event :done-b))))
+                     (empty-next-trigger-schedules!)
+                     (append-trigger-history! :state-machine sm :event :done-a)
+                     (append-trigger-history! :state-machine sm :event :done-b))))
     (is (eq 0 (length (getf result :schedules))))
     (let* ((histories (getf result :history))
            (1st (first histories))
@@ -38,7 +38,7 @@
   (let* ((sm (state-machine-example-01))
          (entry (first (getf (with-own-trigger-schedules-and-history
                                  ()
-                                 (schedule-next-trigger sm :home->work))
+                                 (schedule-next-trigger! sm :home->work))
                              :schedules))))
     (is (eq :home->work (trigger-schedule-entry-event entry)))
     (is-false (trigger-schedule-entry-args entry))))
@@ -47,7 +47,7 @@
   (let* ((sm (state-machine-example-01))
          (entry (first (getf (with-own-trigger-schedules-and-history
                                  ()
-                                 (schedule-next-trigger sm :home->work 1 2 3))
+                                 (schedule-next-trigger! sm :home->work 1 2 3))
                              :schedules))))
     (is (eq :home->work (trigger-schedule-entry-event entry)))
     (is (equal '(1 2 3) (trigger-schedule-entry-args entry)))))
@@ -59,47 +59,47 @@
       (with-own-trigger-schedules-and-history
           ()
           (is (eq :home->work (scheduled-event
-                               (schedule-next-trigger sm :home->work))))
+                               (schedule-next-trigger! sm :home->work))))
           (is (eq :work->home (scheduled-event
-                               (schedule-next-trigger sm :work->home))))
-          (is-false (schedule-next-trigger sm :show-me-the-money))))))
+                               (schedule-next-trigger! sm :work->home))))
+          (is-false (schedule-next-trigger! sm :show-me-the-money))))))
 
 (test pop-next-scheduled-trigger
   (let ((sm (state-machine-example-01)))
     (with-own-trigger-schedules-and-history
         ()
         ;;
-        (is-true (schedule-next-trigger sm :home->work 1 2 3))
-        (is-true (schedule-next-trigger sm :work->home 7 8 9))
+        (is-true (schedule-next-trigger! sm :home->work 1 2 3))
+        (is-true (schedule-next-trigger! sm :work->home 7 8 9))
         ;;
-        (let ((entry (pop-next-scheduled-trigger)))
+        (let ((entry (pop-next-scheduled-trigger!)))
           (is (eq :home->work (trigger-schedule-entry-event entry)))
           (is (equal '(1 2 3) (trigger-schedule-entry-args entry))))
-        (let ((entry (pop-next-scheduled-trigger)))
+        (let ((entry (pop-next-scheduled-trigger!)))
           (is (eq :work->home (trigger-schedule-entry-event entry)))
           (is (equal '(7 8 9) (trigger-schedule-entry-args entry))))
-        (is-false (pop-next-scheduled-trigger)))))
+        (is-false (pop-next-scheduled-trigger!)))))
 
 (test empty-next-trigger-schedules
   (let ((sm (state-machine-example-01)))
     (with-own-trigger-schedules-and-history
         ()
         ;;
-        (schedule-next-trigger sm :my-event '(1 2 3))
-        (schedule-next-trigger sm :another-event '(7 8 9))
+        (schedule-next-trigger! sm :my-event '(1 2 3))
+        (schedule-next-trigger! sm :another-event '(7 8 9))
         ;;
-        (empty-next-trigger-schedules)
-        (is-false (pop-next-scheduled-trigger)))))
+        (empty-next-trigger-schedules!)
+        (is-false (pop-next-scheduled-trigger!)))))
 
 (test append-trigger-history-and-empty-trigger-history
   (let ((sm (state-machine-example-01)))
     (with-own-trigger-schedules-and-history
         ()
         ;;
-        (append-trigger-history :state-machine sm :event :a :args '(1 2 3))
-        (append-trigger-history :state-machine sm :event :b :args '(7 8 9))
+        (append-trigger-history! :state-machine sm :event :a :args '(1 2 3))
+        (append-trigger-history! :state-machine sm :event :b :args '(7 8 9))
         (is (eq 2 (length *trigger-history*)))
-        (empty-trigger-history)
+        (empty-trigger-history!)
         (is (eq 0 (length *trigger-history*))))))
 
 (test append-trigger-history
@@ -107,12 +107,12 @@
       ()
       ;;
       (let ((sm (state-machine-example-01)))
-        (append-trigger-history :state-machine sm
-                                :event :my-event
-                                :args (list 'a 'b)
-                                :new-state :unknown
-                                :rejected-by :itself
-                                :rejection-reason :just-because)
+        (append-trigger-history! :state-machine sm
+                                 :event :my-event
+                                 :args (list 'a 'b)
+                                 :new-state :unknown
+                                 :rejected-by :itself
+                                 :rejection-reason :just-because)
         ;;
         (let* ((item (first *trigger-history*))
                (param (getf item :param))
@@ -125,7 +125,7 @@
           (is (eq :just-because (getf result :rejection-reason)))))))
 
 (test trigger!-appends-history
-  (empty-trigger-history)
+  (empty-trigger-history!)
   (let ((sm (state-machine-example-01))
         (*trigger!-clear-history* nil))
     (with-own-trigger-schedules-and-history
@@ -168,8 +168,8 @@
                               (unless schedule-inserter-inserted
                                 (let ((a-state-machine
                                         (state-transition-state-machine a-state-transition)))
-                                (schedule-next-trigger a-state-machine :work->home :quickly)
-                                (schedule-next-trigger a-state-machine :meditate :peacefully))
+                                (schedule-next-trigger! a-state-machine :work->home :quickly)
+                                (schedule-next-trigger! a-state-machine :meditate :peacefully))
                                 (setf schedule-inserter-inserted t))))
          (sm (state-machine-example-01 :global-after-hooks (list schedule-inserter))))
     (with-own-trigger-schedules-and-history
@@ -208,10 +208,10 @@
         (is (eq :at-home (current-state sm)))
         (is (eq 0 (length *trigger-history*)))
         ;;
-        (schedule-next-trigger-without-check sm :work->home :quickly)
-        (schedule-next-trigger-without-check sm :meditate :peacefully)
-        (schedule-next-trigger-without-check sm :home->work :well)
-        (schedule-next-trigger-without-check sm :home->bed :sleepy)
+        (schedule-next-trigger-without-check! sm :work->home :quickly)
+        (schedule-next-trigger-without-check! sm :meditate :peacefully)
+        (schedule-next-trigger-without-check! sm :home->work :well)
+        (schedule-next-trigger-without-check! sm :home->bed :sleepy)
         (trigger! sm :home->work :just-go)
         ;;
         (is (eq :nirvana (current-state sm)))

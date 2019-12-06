@@ -114,10 +114,10 @@ evaluated values are:
                `(%return-trigger! ,new-state nil nil))
              (%log-history+return-trigger!-fail
                  (a-state-machine event args rejected-by rejection-reason)
-               `(progn (append-trigger-history :state-machine ,a-state-machine
-                                               :event ,event :args ,args
-                                               :rejected-by ,rejected-by
-                                               :rejection-reason ,rejection-reason)
+               `(progn (append-trigger-history! :state-machine ,a-state-machine
+                                                :event ,event :args ,args
+                                                :rejected-by ,rejected-by
+                                                :rejection-reason ,rejection-reason)
                        (%return-trigger! nil ,rejected-by ,rejection-reason)))
              (%check-before-hooks (a-state-machine event args
                                    hooks a-state-transition rejected-by)
@@ -132,7 +132,7 @@ evaluated values are:
       (%log-history+return-trigger!-fail a-state-machine event args
                                          :cannot-be-triggered event))
     ;; clear previous history?
-    (when *trigger!-clear-history* (empty-trigger-history))
+    (when *trigger!-clear-history* (empty-trigger-history!))
     ;; actual body
     (%with-trigger!-params a-state-machine event args
         (cur-stgate transition-def state-def next-state a-state-transition)
@@ -156,9 +156,9 @@ evaluated values are:
         (call-after-hooks (after-hooks state-def) a-state-transition)
         (call-after-hooks (after-hooks a-state-machine) a-state-transition)
         ;;
-        (append-trigger-history :state-machine a-state-machine :event event :args args
-                                :new-state (current-state a-state-machine))
-        (let ((next-schedule (pop-next-scheduled-trigger)))
+        (append-trigger-history! :state-machine a-state-machine :event event :args args
+                                 :new-state (current-state a-state-machine))
+        (let ((next-schedule (pop-next-scheduled-trigger!)))
           (if next-schedule
               ;; then, tail recursive call
               (let ((*trigger!-clear-history* nil))

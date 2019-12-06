@@ -11,6 +11,8 @@
   2) Wire with external object by attaching hook functions.
 
 
+* TODO 예제 코드, 주석 붙이기 방식의 API 소개
+
 * Getting Started
   1) ~git clone~ this repository.
   2) ~(asdf:load-system :cl-state-machine)~
