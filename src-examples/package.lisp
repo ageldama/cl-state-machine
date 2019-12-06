@@ -6,7 +6,8 @@
 (defpackage #:cl-state-machine-examples/tamagochi
   (:use :common-lisp :cl-state-machine :alexandria)
   (:export
-   :run))
+   :run
+   :run+quit))
 
 (defpackage #:cl-state-machine-examples/graphviz
   (:use :common-lisp :cl-state-machine :cl-state-machine-graphing)

@@ -173,3 +173,7 @@
                          ;; unknown choice
                          (format *query-io* "~a ???~%" choice))))))
 
+(defun run+quit ()
+  (run)
+  #+clisp (ext:quit))
+

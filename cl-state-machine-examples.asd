@@ -12,5 +12,5 @@
                  )))
   :build-operation "asdf:program-op"
   :build-pathname "tamagochi.exe"
-  :entry-point "cl-state-machine-examples/tamagochi:run"
+  :entry-point "cl-state-machine-examples/tamagochi:run+quit"
   :description "Examples of cl-state-machine")
