@@ -173,7 +173,15 @@
                          ;; unknown choice
                          (format *query-io* "~a ???~%" choice))))))
 
+#-ecl
 (defun run+quit ()
   (run)
   #+clisp (ext:quit))
+
+#+ecl
+(defun run+quit ()
+  (handler-case
+      (run)
+    (t (a-condition) (pprint a-condition)))
+    (ext:quit))
 
