@@ -93,21 +93,65 @@ Simple state machine DSL/library for CommonLisp.
    #+END_SRC
 
 *** Type ~before-hook-function~ and ~after-hook-function~
+    Hook functions can be attached to:
 
-*** Class ~state-machine~
-    1) ~state-definitions~
-    2) ~current-state~
-    3) ~transition-definitions~
-    4) ~before-hooks~ and ~after-hooks~
-    5) ~datum~
+    1) state machine instance
+    2) state definition
+    3) transition definition
+
+    And those will be invoked when attached
+    state-machine/state/transition's activation, on the before and the
+    after.
+
+    #+BEGIN_SRC lisp
+      ;;; Both does not return any value,
+      ;;;
+      ;;; And take `state-transition' of current event.
+      ;;;
+      ;;; Also can take auxiliary values by `&rest t' which has been passed
+      ;;; by event initiator.
+      ;;;
+      (deftype before-hook-function ()
+        `(function (state-transition &rest t) null))
+
+      (deftype after-hook-function ()
+        `(function (state-transition &rest t) null))
+
+
+      ;;; Thus, it would look like:
+      (flet ((a-before-hook (a-state-definition &rest args) nil)
+             (an-after-hook (a-state-definition &rest args) nil))
+        nil)
+    #+END_SRC
 
 *** Class ~state-definition~
-    1) ~state~
-    2) ~description~
-    3) ~terminal~
-    4) ~before-hooks~ and ~after-hooks~
+    #+BEGIN_SRC lisp
+      (make-instance 'state-definition
+                     :state :FIN    ; Name of this state
+
+                     :terminal t    ; Is a terminal state? Optional, Default: false.
+
+                     :description "foo????"    ; Simple descriptive string. Optional.
+
+                     ;; Hook function slots are list of functions:
+                     ;; (Read above `Hook functions' section)
+                     ;;
+                     ;; Optional.
+                     :before-hooks (list #'a-before-hook-fn)
+
+                     :after-hooks (list #'a-after-hook-fn
+                                        #'another-after-hook-fn))
+    #+END_SRC
 
 *** Macro ~state-definitions-of~
+    #+BEGIN_SRC lisp
+      ;;; Can express a list of `state-definition's easily:
+      (state-definitions-of
+       '(:state :a) ; simply `initarg' of `state-definition'.
+       `(:state :b
+         :terminal t
+         :before-hooks (,#'a-before-hook-fn))) ; Use of quasiquotes
+    #+END_SRC
 
 *** Class ~transition-definition~
     1) ~from-state~, ~to-state~ and ~event~
@@ -115,6 +159,13 @@ Simple state machine DSL/library for CommonLisp.
     3) ~before-hooks~ and ~after-hooks~
 
 *** Macro ~transition-definitions-of~
+
+*** Class ~state-machine~
+    1) ~state-definitions~
+    2) ~current-state~
+    3) ~transition-definitions~
+    4) ~before-hooks~ and ~after-hooks~
+    5) ~datum~
 
 *** Macro ~state-machine-of~
 
