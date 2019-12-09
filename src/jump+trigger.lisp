@@ -90,17 +90,16 @@ The evaluation order of hook functions are:
   (5) per-state-after
   (6) global-after
 
-Any global-before or per-state-before hook function could reject the
-transition by invoking `reject-transition!'. In this case, any
-subsequent hook function evaluation will be stopped and the function's
-evaluated values are:
+Any before hook function could reject the transition by invoking
+`reject-transition!'. In this case, any subsequent hook function
+evaluation will be stopped and the function's evaluated values are:
 
   - `NEW-STATE-SYMBOL' is `nil',
   - `REJECTED-BY' is could be one of
     `:STATE-MACHINE-BEFORE-HOOK-REJECTED' or
     `:STATE-DEFINITION-BEFORE-HOOK-REJECTED' or
     `:TRANSITION-DEFINITION-BEFORE-HOOK-REJECTED'.
-  - `REJECTION-REASON' is a cons cell of `(DATUM . REJECTED-HOOk-FUNCTION-VALUE)'
+  - `REJECTION-REASON' is a cons cell of `(DATUM . REJECTED-HOOK-FUNCTION-VALUE)'
     where `DATUM' is the value the hook function passed as `:datum' key parameter to
     `reject-transition!'.
 "

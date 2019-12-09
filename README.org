@@ -124,6 +124,18 @@ Simple state machine DSL/library for CommonLisp.
         nil)
     #+END_SRC
 
+**** The Evaluation Order
+     The order of evaluations of hook functions are:
+
+     1) before hooks of ~state-machine~
+     2) before hooks of ~state-definition~
+     3) before hooks of ~transition-definition~
+     4) after hooks of ~transition-definition~
+     5) after hooks of ~state-definition~
+     6) after hooks of ~state-machine~
+
+
+
 
 *** Class ~state-definition~
     #+BEGIN_SRC lisp
@@ -283,25 +295,72 @@ Simple state machine DSL/library for CommonLisp.
 ** TODO State Changings
 
 *** Function ~jump!~
+    #+BEGIN_SRC lisp
+    ;;; You can `jump!' to any state, without any restriction/constraint!
+    (jump! a-state-machine :FIN)
+    #+END_SRC
 
-*** Function ~trigger!~
+*** Function ~trigger!~ and ~reject-transition!~
+    #+BEGIN_SRC lisp
+      ;;; Where,
+      (defvar a-state-machine (state-machine-of '(:current-state :A)
+                                                ('(:state :A)
+                                                  '(:state :B)
+                                                  '(:state :C)
+                                                  '(:state :D
+                                                    :terminal t))
+                                                ('(:from :A :to :B
+                                                   :event :A->B)
+                                                  '(:from :A :to :C
+                                                    :event :A->C)
+                                                  '(:from :C :to :D
+                                                    :event :C->D))))
+
+
+      (current-state a-state-machine) ; => :A
+
+
+      (trigger! a-state-machine :A->C)
+      ;; OR
+      (trigger! a-state-machine :A->C
+        :additional-arg-1 'additional-arg-2-for-hook-functions)
+      ;;
+      ;; => `(values NEW-STATE-SYMBOL REJECTED-BY REJECTION-REASON)'
+      ;;
+      ;; * on Success:
+      ;;   - `NEW-STATE-SYMBOL' is a symbol of corresponding state definition
+      ;;      of the new state.
+      ;;   - and `REJECTED-BY', `REJECTION-REASON' both is `nil'.
+      ;;
+      ;; * if `a-state-machine' has terminated or the specified `event'
+      ;;   cannot be triggered from current state:
+      ;;   - `NEW-STATE-SYMBOL' is nil.
+      ;;   - `REJECTED-BY' is `:CANNOT-BE-TRIGGERED'
+      ;;     and `REJECTION-REASON' is the specified `event' parameter.
+      ;;
+      ;; * any before hook function could reject the transition by invoking
+      ;; `reject-transition!'. In this case, any subsequent hook function
+      ;; evaluation will be stopped and the function's evaluated values are:
+      ;;
+      ;;  - `NEW-STATE-SYMBOL' is `nil',
+      ;;  - `REJECTED-BY' is could be one of
+      ;;    `:STATE-MACHINE-BEFORE-HOOK-REJECTED' or
+      ;;    `:STATE-DEFINITION-BEFORE-HOOK-REJECTED' or
+      ;;    `:TRANSITION-DEFINITION-BEFORE-HOOK-REJECTED'.
+      ;;  - `REJECTION-REASON' is a cons cell of `(DATUM . REJECTED-HOOK-FUNCTION-VALUE)'
+      ;;    where `DATUM' is the value the hook function passed as `:datum' key parameter to
+      ;;    `reject-transition!'.
+      ;;
+
+
+      (current-state a-state-machine) ; => :C
+
+    #+END_SRC
 
 
 
-** TODO More on Hooks
 
-*** The Evaluation Order
-    The order of evaluations of hook functions are:
 
-    1) before hooks of ~state-machine~
-    2) before hooks of ~state-definition~
-    3) before hooks of ~transition-definition~
-    4) after hooks of ~transition-definition~
-    5) after hooks of ~state-definition~
-    6) after hooks of ~state-machine~
-
-*** Function ~reject-transition!~
-    - ..and ~trigger!~
 
 
 
@@ -309,34 +368,65 @@ Simple state machine DSL/library for CommonLisp.
 * TODO Advanced Usages
 
 
-** TODO Predicates and Inquries
-
-*** Function ~find-state-definition-by-state~
-
-*** Function ~find-transition-definition-by-state-and-event~
-
-
-
+** More Predicates and Inquries
+   1) Function ~find-state-definition-by-state~
+   2) Function ~find-transition-definition-by-state-and-event~
 
 ** TODO Scheduling Next Trigger Steps
 
-*** Function ~schedule-next-trigger*~, Hooks, and ~trigger!~ Function
+*** Function ~schedule-next-trigger!~
+    Function ~schedule-next-trigger! (a-state-machine event &rest
+    args)~ schedules triggering event after next ~trigger!~
+    invocation.
+
+    Without invoking ~trigger!~, just scheduling does not affect.
+
+    ~schedule-next-trigger!~ check possibility of requesting ~:event~
+    by current state of ~a-state-machine~, using
+    ~compute-last-state~.
+
+    But checks by ~compute-last-state~ is only with states of current
+    and scheduled events, cannot predict the rejection by a hook
+    function.
+
+    Schedule without any checking, could be done with
+    ~schedule-next-trigger-without-check!~.
+
+
 
 *** Function ~empty-next-trigger-schedules~
+    Empties any scheduled triggering events.
 
-*** ~*trigger-schedules*~, ~trigger-schedule-entry-event~, ~trigger-schedule-entry-args~
 
-*** Function ~compute-last-state~
 
 
 ** Trigger History
 
-*** Variable ~*trigger-history*~
+*** Variable ~*trigger-history*~ and ~*trigger!-clear-history~
+    Every last triggered events, its params and results are recorded
+    in ~*trigger-history*~.
 
-*** Variable ~*trigger!-clear-history?~ and ~trigger!~ Function
+    Each time invoke ~trigger!~ clears ~*trigger-history*~ and append
+    new history items.
 
-** TODO Macro: ~with-own-trigger-schedule-and-history~
+    ~*trigger!-clear-history*~ variable is true by default, dynamic
+    bind this as false, make ~trigger!~ function skip the clearing of
+    ~*trigger-history*~.
 
+
+** Macro: ~with-own-trigger-schedule-and-history~
+   #+BEGIN_SRC lisp
+     ;;; Evaluate the body within dynamic binding of `*trigger-schedules'
+     ;;; and `*trigger-history':
+     (with-own-trigger-schedules-and-history
+         (:schedules '()
+          :history '())
+         ;; the body, evaluated as `prog'
+         (trigger! a-state-machine :A->B)
+         ;; ...
+         ) ; => (LIST SCHEDULES HISTORY)
+     ;; Returns last state of `SCHEDULES' and `HISTORY' as a list.
+   #+END_SRC
 
 
 
