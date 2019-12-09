@@ -60,7 +60,7 @@ Simple state machine DSL/library for CommonLisp.
                          `(:from :HOME :to :FIN
                            :event :HOME->FIN)))
 
-     ;;; Without DSL:
+     ;;; Or without using DSL:
      ;;;
      (let* (;; states
             (state-home (make-instance 'state-definition :state :HOME))
@@ -100,8 +100,8 @@ Simple state machine DSL/library for CommonLisp.
     3) transition definition
 
     And those will be invoked when attached
-    state-machine/state/transition's activation, on the before and the
-    after.
+    state-machine/state/transition's getting activation, on the before
+    and the after.
 
     #+BEGIN_SRC lisp
       ;;; Both does not return any value,
@@ -154,11 +154,29 @@ Simple state machine DSL/library for CommonLisp.
     #+END_SRC
 
 *** Class ~transition-definition~
-    1) ~from-state~, ~to-state~ and ~event~
-    2) ~description~
-    3) ~before-hooks~ and ~after-hooks~
+    #+BEGIN_SRC lisp
+      (make-instance 'transition-definition
+                     :from :STARTING-STATE :to :END-STATE
+
+                     :event :END-IT   ; the `transition-definition' triggered by this `:event'-keyword
+
+                     :description "Hasta la vista, baby." ; Optional
+
+                     :before-hooks (list #'a-before-hook-fn
+                                         #'another-before-hook-fn)
+                     :after-hooks '())
+    #+END_SRC
+
 
 *** Macro ~transition-definitions-of~
+    #+BEGIN_SRC lisp
+       (transition-definitions-of
+        '(:from :A :to :B :event :A->B)
+        '(:from :B :to :A :event :B->A)
+        `(:from :A :to :C :event :A->C
+          :description "yet another foobar????"
+          :before-hooks (,#'a-before-hook-fn)))
+    #+END_SRC
 
 *** Class ~state-machine~
     1) ~state-definitions~
