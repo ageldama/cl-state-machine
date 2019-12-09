@@ -151,6 +151,7 @@ Simple state machine DSL/library for CommonLisp.
        `(:state :b
          :terminal t
          :before-hooks (,#'a-before-hook-fn))) ; Use of quasiquotes
+      ;; => list of `state-definition'
     #+END_SRC
 
 *** Class ~transition-definition~
@@ -170,12 +171,13 @@ Simple state machine DSL/library for CommonLisp.
 
 *** Macro ~transition-definitions-of~
     #+BEGIN_SRC lisp
-       (transition-definitions-of
-        '(:from :A :to :B :event :A->B)
-        '(:from :B :to :A :event :B->A)
-        `(:from :A :to :C :event :A->C
-          :description "yet another foobar????"
-          :before-hooks (,#'a-before-hook-fn)))
+      (transition-definitions-of
+       '(:from :A :to :B :event :A->B)
+       '(:from :B :to :A :event :B->A)
+       `(:from :A :to :C :event :A->C
+         :description "yet another foobar????"
+         :before-hooks (,#'a-before-hook-fn)))
+      ;; => list of `transition-definition'
     #+END_SRC
 
 *** Class ~state-machine~
@@ -203,6 +205,7 @@ Simple state machine DSL/library for CommonLisp.
                             :event :WORK->HOME)
                           `(:from :HOME :to :FIN
                             :event :HOME->FIN)))
+      ;; => a `state-machine' instance
     #+END_SRC
 
 
