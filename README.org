@@ -17,29 +17,29 @@ Simple state machine DSL/library for CommonLisp.
 
 * Getting Started
 
-`git clone git@github.com:ageldama/cl-state-machine.git`
+  ~git clone git@github.com:ageldama/cl-state-machine.git~
 
-..And then:
-
-
-```lisp
-;;; Load this system. (You need Quicklisp and up to date ASDF v3.3+)
-;;;      - in case no idea how ASDF finds `cl-state-machine.asd' file on your disk:
-;;;        https://common-lisp.net/project/asdf/asdf/Configuring-ASDF-to-find-your-systems.html
-;;;
-LISP> (ql:quickload :cl-state-machine)
+  ..And then:
 
 
-;;; (Optional, Run tests)
-;;;
-LISP> (asdf:test-system :cl-state-machine)
+  #+BEGIN_SRC lisp
+    ;;; Load this system. (You need Quicklisp and up to date ASDF v3.3+)
+    ;;;      - in case no idea how ASDF finds `cl-state-machine.asd' file on your disk:
+    ;;;        https://common-lisp.net/project/asdf/asdf/Configuring-ASDF-to-find-your-systems.html
+    ;;;
+    LISP> (ql:quickload :cl-state-machine)
 
 
-;;; (Optional, Run example program)
-;;;
-LISP> (asdf:load-system :cl-state-machine-examples)
-LISP> (cl-state-machine-examples/tamagochi:run)
-```
+    ;;; (Optional, Run tests)
+    ;;;
+    LISP> (asdf:test-system :cl-state-machine)
+
+
+    ;;; (Optional, Run example program)
+    ;;;
+    LISP> (asdf:load-system :cl-state-machine-examples)
+    LISP> (cl-state-machine-examples/tamagochi:run)
+  #+END_SRC
 
 
 * TODO Basic Usages
