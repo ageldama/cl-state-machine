@@ -179,13 +179,31 @@ Simple state machine DSL/library for CommonLisp.
     #+END_SRC
 
 *** Class ~state-machine~
-    1) ~state-definitions~
-    2) ~current-state~
-    3) ~transition-definitions~
-    4) ~before-hooks~ and ~after-hooks~
-    5) ~datum~
+    Can use of ~(make-instance 'state-machine ...)~ with following
+    ~initarg~ s:
+
+    1) ~:state-definitions~ : list of ~state-definition~
+    2) ~:transition-definitions~ : list of ~transition-definition~
+    3) ~:current-state~ : starting point, starting
+       ~state-definition~'s keyword.
+    4) ~:before-hooks~ and ~:after-hooks~ : list of hook functions
+    5) ~:datum~ : Auxilary value slot that want to be exposed to hook
+       functions.
 
 *** Macro ~state-machine-of~
+    #+BEGIN_SRC lisp
+      (state-machine-of `(:current-state :HOME
+                          :datum "foobar here")
+                        (`(:state :HOME)
+                          `(:state :FIN :terminal t)
+                          `(:state :WORK))
+                        (`(:from :START :to :WORK
+                           :event :HOME->WORK)
+                          `(:from :WORK :to :HOME
+                            :event :WORK->HOME)
+                          `(:from :HOME :to :FIN
+                            :event :HOME->FIN)))
+    #+END_SRC
 
 
 
@@ -218,7 +236,7 @@ Simple state machine DSL/library for CommonLisp.
 * TODO Advanced Usages
 
 
-** Predicates and Inquries
+** TODO Predicates and Inquries
 
 *** Function ~find-state-definition-by-state~
 
@@ -227,7 +245,7 @@ Simple state machine DSL/library for CommonLisp.
 
 
 
-** Scheduling Next Trigger Steps
+** TODO Scheduling Next Trigger Steps
 
 *** Function ~schedule-next-trigger*~, Hooks, and ~trigger!~ Function
 
