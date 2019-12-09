@@ -124,6 +124,7 @@ Simple state machine DSL/library for CommonLisp.
         nil)
     #+END_SRC
 
+
 *** Class ~state-definition~
     #+BEGIN_SRC lisp
       (make-instance 'state-definition
@@ -210,14 +211,73 @@ Simple state machine DSL/library for CommonLisp.
 
 
 
-** TODO Predicates and Inquries
+** Predicates and Inquries
 
 *** Function ~can?~
+    #+BEGIN_SRC lisp
+      (current-state a-state-machine) ; => `:AT-HOME'
+
+
+      (can? a-state-machine :HOME->WORK)
+      ;; => T
+      ;;
+      ;; if currently at `:AT-HOME' state and a transition-definition of
+      ;; `:HOME->WORK' is defined.
+
+
+      (can? a-state-machine :HOME->WORK :AT-WORK) ; Specified ``state'',
+                                                  ; not current state.
+      ;; => NIL
+      ;;
+      ;; because we're at `:AT-WORK' state which can be assumed it isn't
+      ;; `:from' of `:HOME->WORK''s `transition-definition'.
+    #+END_SRC
+
 
 *** Function ~terminated?~
+    #+BEGIN_SRC lisp
+      (current-state a-state-machine) ; => `:AT-HOME'
+
+
+      (terminated? a-state-machine) ; => NIL
+      ;; Because `:AT-HOME' state isn't a terminal state.
+
+
+      ;; Can specify a state, not just using current state.
+      (terminated? a-state-machine :FIN) ; => T
+      ;; `:FIN' state is defined as `:terminal = T'.
+    #+END_SRC
 
 *** Function ~possible-events~
+    #+BEGIN_SRC lisp
+      ;;; Where:
+      (defvar a-state-machine (state-machine-of '(:current-state :A)
+                                                ('(:state :A)
+                                                  '(:state :B)
+                                                  '(:state :C)
+                                                  '(:state :D
+                                                    :terminal t))
+                                                ('(:from :A :to :B
+                                                   :event :A->B)
+                                                  '(:from :A :to :C
+                                                    :event :A->C)
+                                                  '(:from :C :to :D
+                                                    :event :C->D))))
 
+
+
+      (current-state a-state-machine) ; => :A
+
+
+
+      (possible-events a-state-machine) ; => (LIST :A->B :A->C)
+
+
+      (possible-events a-state-machine :B) ; => NIL
+
+
+      (possible-events a-state-machine :C) ; => (LIST :C->D)
+    #+END_SRC
 
 
 ** TODO State Changings
@@ -229,6 +289,16 @@ Simple state machine DSL/library for CommonLisp.
 
 
 ** TODO More on Hooks
+
+*** The Evaluation Order
+    The order of evaluations of hook functions are:
+
+    1) before hooks of ~state-machine~
+    2) before hooks of ~state-definition~
+    3) before hooks of ~transition-definition~
+    4) after hooks of ~transition-definition~
+    5) after hooks of ~state-definition~
+    6) after hooks of ~state-machine~
 
 *** Function ~reject-transition!~
     - ..and ~trigger!~
