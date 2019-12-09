@@ -14,16 +14,30 @@
 * TODO 예제 코드, 주석 붙이기 방식의 API 소개
 
 * Getting Started
-  1) ~git clone~ this repository.
-  2) ~(asdf:load-system :cl-state-machine)~
-     - (in case no idea how =asdf= finds ~cl-state-machine.asd~ file
-       on your disk) :
-       https://common-lisp.net/project/asdf/asdf/Configuring-ASDF-to-find-your-systems.html]]
-  3) (/Optional/) ~(asdf:test-system :cl-state-machine)~
-     - Check out test cases in ~test/~ directory.
-  4) (/Optional/) ~(asdf:load-system :cl-state-machine-examples)~
-     - Run and/or Read: ~(cl-state-machine-examples/tamagochi:run)~
 
+  `git clone git@github.com:ageldama/cl-state-machine.git`
+
+  ..And then:
+
+
+  ```lisp
+  ;;; Load this system. (You need Quicklisp and up to date ASDF v3.3+)
+  ;;;      - in case no idea how ASDF finds `cl-state-machine.asd' file on your disk:
+  ;;;        https://common-lisp.net/project/asdf/asdf/Configuring-ASDF-to-find-your-systems.html
+  ;;;
+  LISP> (ql:quickload :cl-state-machine)
+
+
+  ;;; (Optional, Run tests)
+  ;;;
+  LISP> (asdf:test-system :cl-state-machine)
+
+
+  ;;; (Optional, Run example program)
+  ;;;
+  LISP> (asdf:load-system :cl-state-machine-examples)
+  LISP> (cl-state-machine-examples/tamagochi:run)
+  ```
 
 
 * TODO Basic Usages
@@ -118,13 +132,17 @@
 
 *** Variable ~*trigger!-clear-history?~ and ~trigger!~ Function
 
-** Macro: ~with-own-trigger-schedule-and-history~
+** TODO Macro: ~with-own-trigger-schedule-and-history~
 
 
 
 
 
-* TODO Do Not Share Among Threads
+* Do Not Share Among Threads
+  Every object and function in this system does not prevent multi
+  threading issues. Thus please do not share any instance value
+  between multiple threads, state transition and all other mutating
+  operations should be invoked and executed within same thread.
 
 * Contact and License
   - Keybase: [[https://keybase.io/ageldama]]
