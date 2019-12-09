@@ -13,8 +13,6 @@ Simple state machine DSL/library for CommonLisp.
   2) Wire with external object by attaching hook functions.
 
 
-* TODO 예제 코드, 주석 붙이기 방식의 API 소개
-
 * Getting Started
 
   ~git clone git@github.com:ageldama/cl-state-machine.git~
@@ -27,29 +25,72 @@ Simple state machine DSL/library for CommonLisp.
     ;;;      - in case no idea how ASDF finds `cl-state-machine.asd' file on your disk:
     ;;;        https://common-lisp.net/project/asdf/asdf/Configuring-ASDF-to-find-your-systems.html
     ;;;
-    LISP> (ql:quickload :cl-state-machine)
+    (ql:quickload :cl-state-machine)
 
 
     ;;; (Optional, Run tests)
     ;;;
-    LISP> (asdf:test-system :cl-state-machine)
+    (asdf:test-system :cl-state-machine)
 
 
     ;;; (Optional, Run example program)
     ;;;
-    LISP> (asdf:load-system :cl-state-machine-examples)
-    LISP> (cl-state-machine-examples/tamagochi:run)
+    (asdf:load-system :cl-state-machine-examples)
+    (cl-state-machine-examples/tamagochi:run)
   #+END_SRC
 
 
-* TODO Basic Usages
+* Basic Usages
+  * I will omit the package name ~cl-state-machine:~ in every example
+    codes below. (Consider every external symbol has been imported to
+    your working package)
 
-** TODO Defining a State Machine
+** Defining a State Machine
+   #+BEGIN_SRC lisp
+     ;;; Using `state-machine-of' DSL macro:
+     ;;;
+     (state-machine-of `(:current-state :HOME)
+                       (`(:state :HOME)
+                         `(:state :FIN :terminal t)
+                         `(:state :WORK))
+                       (`(:from :START :to :WORK
+                          :event :HOME->WORK)
+                         `(:from :WORK :to :HOME
+                           :event :WORK->HOME)
+                         `(:from :HOME :to :FIN
+                           :event :HOME->FIN)))
 
-   (예제 diagram에 맞는 ~state-machine-of~ 매크로로 표현한 예시 코드를 보이기)
+     ;;; Without DSL:
+     ;;;
+     (let* (;; states
+            (state-home (make-instance 'state-definition :state :HOME))
+            (state-work (make-instance 'state-definition :state :WORK))
+            (state-fin (make-instance 'state-definition :state :FIN :terminal t))
+            ;; events
+            (event-home->work (make-instance 'transition-definition
+                                             :from :HOME :to :WORK
+                                             :event :HOME->WORK))
+            (event-work->home (make-instance 'transition-definition
+                                             :from :WORK :to :HOME
+                                             :event :WORK->HOME))
+            (event-home->fin (make-instance 'transition-definition
+                                            :from :HOME :to :FIN
+                                            :event :HOME->FIN))
+            ;; state-machine
+            (a-state-machine (make-instance 'state-machine
+                                            :state-definitions (list state-home
+                                                                     state-work
+                                                                     state-fin)
+                                            :transition-definitions (list event-home->work
+                                                                          event-work->home
+                                                                          event-home->fin)
+                                            :current-state :HOME)))
+       ;; ...Your code here...
+       nil)
 
-     - 너무 복잡한 hook이 필요 없도록, money 상태 하나만 갖도록
-       만들기.
+
+     ;;; ...Exactly equivalent definitions
+   #+END_SRC
 
 *** Type ~before-hook-function~ and ~after-hook-function~
 
