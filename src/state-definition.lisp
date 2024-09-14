@@ -6,7 +6,7 @@
     :initarg :state :type non-nil-symbol :reader state
     :documentation "Name of the state.")
    (description
-    :initarg :description :initform nil :type string :reader description
+    :initarg :description :initform nil :type (or string null) :reader description
     :documentation "Description string. (Optional)")
    (terminal
     :initarg :terminal :initform nil :type boolean :reader terminal

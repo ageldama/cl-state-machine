@@ -5,7 +5,7 @@
   ((from-state :initarg :from :reader from-state :type symbol)
    (to-state :initarg :to :reader to-state :type symbol)
    (description
-    :initarg :description :initform nil :type string :reader description
+    :initarg :description :initform nil :type (or string null) :reader description
     :documentation "Description string. (Optional)")
    (event :initarg :event :reader event :type symbol
           :documentation "Event name that triggers a transition to the
