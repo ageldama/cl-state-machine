@@ -1,5 +1,5 @@
 (defsystem "cl-state-machine-test"
-  :version "1.0.0"
+  :version "1.0.1"
   :author "Jong-Hyouk Yun <ageldama@gmail.com>"
   :license "MIT"
   :depends-on ("fiveam"
