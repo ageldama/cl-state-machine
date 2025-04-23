@@ -40,6 +40,16 @@ Simple state machine DSL/library for CommonLisp.
   #+END_SRC
 
 
+  ..could use [[https://github.com/roswell/roswell][Roswell]] to execute and/or to build the example:
+
+  #+begin_src shell
+    $ ./run-tamagochi.ros
+
+    $ ros build run-tamagochi.ros
+    # ...will build: ./run-tamagochi
+  #+end_src
+
+
 * Basic Usages
   * I will omit the package name ~cl-state-machine:~ in every example
     codes below. (Consider every external symbol has been imported to
